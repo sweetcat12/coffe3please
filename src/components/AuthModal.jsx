@@ -1,15 +1,15 @@
 import { useState, useEffect } from 'react';
 
-const AuthModal = ({ mode, closeModal, onLogin, onSignup, switchMode }) => {
+const AuthModal = ({ mode, closeModal, onLogin, onSignup, switchMode, onForgotPassword }) => {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
+    phone: '',
     password: '',
     confirmPassword: ''
   });
   const [error, setError] = useState('');
 
-  // Debug log when modal mounts
   useEffect(() => {
     console.log('AuthModal mounted with mode:', mode);
   }, [mode]);
@@ -19,7 +19,7 @@ const AuthModal = ({ mode, closeModal, onLogin, onSignup, switchMode }) => {
       ...formData,
       [e.target.name]: e.target.value
     });
-    setError(''); // Clear error when user types
+    setError('');
   };
 
   const handleSubmit = (e) => {
@@ -27,7 +27,6 @@ const AuthModal = ({ mode, closeModal, onLogin, onSignup, switchMode }) => {
     setError('');
 
     if (mode === 'login') {
-      // Handle Login
       if (!formData.email || !formData.password) {
         setError('Please fill in all fields');
         return;
@@ -38,9 +37,13 @@ const AuthModal = ({ mode, closeModal, onLogin, onSignup, switchMode }) => {
         setError(result.error);
       }
     } else {
-      // Handle Signup
-      if (!formData.name || !formData.email || !formData.password || !formData.confirmPassword) {
+      if (!formData.name || !formData.email || !formData.phone || !formData.password || !formData.confirmPassword) {
         setError('Please fill in all fields');
+        return;
+      }
+
+      if (!/^\d{10,13}$/.test(formData.phone)) {
+        setError('Enter a valid phone number (10–13 digits)');
         return;
       }
 
@@ -54,7 +57,7 @@ const AuthModal = ({ mode, closeModal, onLogin, onSignup, switchMode }) => {
         return;
       }
 
-      const result = onSignup(formData.email, formData.password, formData.name);
+      const result = onSignup(formData.email, formData.password, formData.name, formData.phone);
       if (!result.success) {
         setError(result.error);
       }
@@ -96,7 +99,6 @@ const AuthModal = ({ mode, closeModal, onLogin, onSignup, switchMode }) => {
           overflowY: 'auto'
         }}
       >
-        {/* Close Button */}
         <button
           onClick={closeModal}
           type="button"
@@ -130,7 +132,6 @@ const AuthModal = ({ mode, closeModal, onLogin, onSignup, switchMode }) => {
           ×
         </button>
 
-        {/* Header */}
         <div style={{ marginBottom: '1.5rem' }}>
           <h2 style={{ 
             fontSize: '1.875rem', 
@@ -147,7 +148,6 @@ const AuthModal = ({ mode, closeModal, onLogin, onSignup, switchMode }) => {
           </p>
         </div>
 
-        {/* Error Message */}
         {error && (
           <div style={{
             marginBottom: '1rem',
@@ -162,45 +162,83 @@ const AuthModal = ({ mode, closeModal, onLogin, onSignup, switchMode }) => {
           </div>
         )}
 
-        {/* Form */}
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           {mode === 'signup' && (
-            <div>
-              <label htmlFor="name" style={{
-                display: 'block',
-                fontSize: '0.875rem',
-                fontWeight: '600',
-                color: '#374151',
-                marginBottom: '0.25rem'
-              }}>
-                Full Name
-              </label>
-              <input
-                type="text"
-                id="name"
-                name="name"
-                value={formData.name}
-                onChange={handleChange}
-                placeholder="John Doe"
-                style={{
-                  width: '100%',
-                  padding: '0.75rem 1rem',
-                  border: '1px solid #D1D5DB',
-                  borderRadius: '0.5rem',
-                  outline: 'none',
-                  transition: 'all 0.2s',
-                  fontSize: '1rem'
-                }}
-                onFocus={(e) => {
-                  e.target.style.borderColor = '#F59E0B';
-                  e.target.style.boxShadow = '0 0 0 3px rgba(245, 158, 11, 0.1)';
-                }}
-                onBlur={(e) => {
-                  e.target.style.borderColor = '#D1D5DB';
-                  e.target.style.boxShadow = 'none';
-                }}
-              />
-            </div>
+            <>
+              <div>
+                <label htmlFor="name" style={{
+                  display: 'block',
+                  fontSize: '0.875rem',
+                  fontWeight: '600',
+                  color: '#374151',
+                  marginBottom: '0.25rem'
+                }}>
+                  Full Name
+                </label>
+                <input
+                  type="text"
+                  id="name"
+                  name="name"
+                  value={formData.name}
+                  onChange={handleChange}
+                  placeholder="John Doe"
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem 1rem',
+                    border: '1px solid #D1D5DB',
+                    borderRadius: '0.5rem',
+                    outline: 'none',
+                    transition: 'all 0.2s',
+                    fontSize: '1rem'
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.borderColor = '#F59E0B';
+                    e.target.style.boxShadow = '0 0 0 3px rgba(245, 158, 11, 0.1)';
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = '#D1D5DB';
+                    e.target.style.boxShadow = 'none';
+                  }}
+                />
+              </div>
+
+              <div>
+                <label htmlFor="phone" style={{
+                  display: 'block',
+                  fontSize: '0.875rem',
+                  fontWeight: '600',
+                  color: '#374151',
+                  marginBottom: '0.25rem'
+                }}>
+                  Phone Number
+                </label>
+                <input
+                  type="tel"
+                  id="phone"
+                  name="phone"
+                  value={formData.phone}
+                  onChange={handleChange}
+                  placeholder="09123456789"
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem 1rem',
+                    border: '1px solid #D1D5DB',
+                    borderRadius: '0.5rem',
+                    outline: 'none',
+                    transition: 'all 0.2s',
+                    fontSize: '1rem'
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.borderColor = '#F59E0B';
+                    e.target.style.boxShadow = '0 0 0 3px rgba(245, 158, 11, 0.1)';
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = '#D1D5DB';
+                    e.target.style.boxShadow = 'none';
+                  }}
+                />
+              </div>
+            </>
           )}
 
           <div>
@@ -346,7 +384,33 @@ const AuthModal = ({ mode, closeModal, onLogin, onSignup, switchMode }) => {
           </button>
         </form>
 
-        {/* Switch Mode */}
+        {/* Forgot Password Link - Only show in login mode */}
+        {mode === 'login' && (
+          <div style={{ marginTop: '1rem', textAlign: 'center' }}>
+            <button
+              type="button"
+              onClick={onForgotPassword}
+              style={{
+                color: '#D97706',
+                fontSize: '0.875rem',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                padding: 0,
+                textDecoration: 'underline'
+              }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.color = '#B45309';
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.color = '#D97706';
+              }}
+            >
+              Forgot password?
+            </button>
+          </div>
+        )}
+
         <div style={{ marginTop: '1.5rem', textAlign: 'center' }}>
           <p style={{ color: '#6B7280' }}>
             {mode === 'login' ? "Don't have an account? " : "Already have an account? "}
@@ -370,7 +434,7 @@ const AuthModal = ({ mode, closeModal, onLogin, onSignup, switchMode }) => {
                 e.currentTarget.style.color = '#D97706';
                 e.currentTarget.style.textDecoration = 'none';
               }}
-           >
+            >
               {mode === 'login' ? 'Sign Up' : 'Sign In'}
             </button>
           </p>

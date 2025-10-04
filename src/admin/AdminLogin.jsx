@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import '../App.css';
 
-function AdminLogin({ onLoginSuccess, showToast }) {
+function AdminLogin({ onLoginSuccess, showToast, onForgotPassword }) {
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -33,7 +33,6 @@ function AdminLogin({ onLoginSuccess, showToast }) {
       if (data.success) {
         localStorage.setItem('adminUser', JSON.stringify(data.admin));
         onLoginSuccess(data.admin);
-        // Toast will be shown by AdminApp after successful login
       } else {
         showToast(`❌ ${data.error || 'Login failed!'}`, 'error');
       }
@@ -149,6 +148,31 @@ function AdminLogin({ onLoginSuccess, showToast }) {
             {loading ? 'Signing in...' : 'Sign In'}
           </button>
         </form>
+
+        {/* Forgot Password Link - Below Sign In button */}
+        <div style={{ marginTop: '1rem', textAlign: 'center' }}>
+          <button
+            type="button"
+            onClick={onForgotPassword}
+            style={{
+              fontSize: '0.875rem',
+              color: '#667eea',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              padding: 0,
+              textDecoration: 'underline'
+            }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.color = '#5568d3';
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.color = '#667eea';
+            }}
+          >
+            Forgot password?
+          </button>
+        </div>
 
         <div style={{
           marginTop: '1.5rem',

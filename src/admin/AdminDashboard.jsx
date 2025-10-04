@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
+import NotificationBell from './NotificationBell';
 
 const COLORS = ['#EF4444', '#F59E0B', '#FCD34D', '#34D399', '#10B981'];
 
@@ -31,7 +32,7 @@ function AdminDashboard({ admin, onLogout, showToast }) {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedImage, setSelectedImage] = useState(null);
-  
+
   // Modals
   const [showUserModal, setShowUserModal] = useState(false);
   const [showAdminModal, setShowAdminModal] = useState(false);
@@ -102,11 +103,9 @@ function AdminDashboard({ admin, onLogout, showToast }) {
       const res = await fetch('http://localhost:5000/api/products');
       const data = await res.json();
       if (data.success) {
-        // Check if data is already an array or needs to be converted
         if (Array.isArray(data.data)) {
           setProducts(data.data);
         } else {
-          // If it's in the old nested format
           const allProducts = [];
           Object.entries(data.data).forEach(([category, items]) => {
             items.forEach(item => allProducts.push({ ...item, _id: item._id || item.id, category }));
@@ -129,18 +128,10 @@ function AdminDashboard({ admin, onLogout, showToast }) {
   // User operations
   const handleUserSubmit = async (e) => {
     e.preventDefault();
-    console.log('=== USER SUBMIT DEBUG ===');
-    console.log('Editing item:', editingItem);
-    console.log('User form:', userForm);
-    
     try {
       const url = editingItem ? `http://localhost:5000/api/admin/users/${editingItem._id}` : 'http://localhost:5000/api/admin/users';
       const method = editingItem ? 'PUT' : 'POST';
       const body = editingItem ? { name: userForm.name, email: userForm.email, phone: userForm.phone } : userForm;
-      
-      console.log('URL:', url);
-      console.log('Method:', method);
-      console.log('Body:', JSON.stringify(body));
       
       const res = await fetch(url, {
         method,
@@ -148,9 +139,7 @@ function AdminDashboard({ admin, onLogout, showToast }) {
         body: JSON.stringify(body)
       });
       
-      console.log('Response status:', res.status);
       const data = await res.json();
-      console.log('Response data:', data);
       
       if (data.success) {
         showToast(editingItem ? 'User updated successfully' : 'User created successfully', 'success');
@@ -185,17 +174,9 @@ function AdminDashboard({ admin, onLogout, showToast }) {
   // Admin operations
   const handleAdminSubmit = async (e) => {
     e.preventDefault();
-    console.log('=== ADMIN SUBMIT DEBUG ===');
-    console.log('Editing item:', editingItem);
-    console.log('Admin form:', adminForm);
-    
     try {
       const url = editingItem ? `http://localhost:5000/api/admin/${editingItem._id}` : 'http://localhost:5000/api/admin/create';
       const method = editingItem ? 'PUT' : 'POST';
-      
-      console.log('URL:', url);
-      console.log('Method:', method);
-      console.log('Body:', JSON.stringify(adminForm));
       
       const res = await fetch(url, {
         method,
@@ -203,9 +184,7 @@ function AdminDashboard({ admin, onLogout, showToast }) {
         body: JSON.stringify(adminForm)
       });
       
-      console.log('Response status:', res.status);
       const data = await res.json();
-      console.log('Response data:', data);
       
       if (data.success) {
         showToast(editingItem ? 'Admin updated successfully' : 'Admin created successfully', 'success');
@@ -244,17 +223,9 @@ function AdminDashboard({ admin, onLogout, showToast }) {
   // Product operations
   const handleProductSubmit = async (e) => {
     e.preventDefault();
-    console.log('=== PRODUCT SUBMIT DEBUG ===');
-    console.log('Editing item:', editingItem);
-    console.log('Product form:', productForm);
-    
     try {
       const url = editingItem ? `http://localhost:5000/api/admin/products/${editingItem._id}` : 'http://localhost:5000/api/admin/products';
       const method = editingItem ? 'PUT' : 'POST';
-      
-      console.log('URL:', url);
-      console.log('Method:', method);
-      console.log('Body:', JSON.stringify(productForm));
       
       const res = await fetch(url, {
         method,
@@ -262,9 +233,7 @@ function AdminDashboard({ admin, onLogout, showToast }) {
         body: JSON.stringify(productForm)
       });
       
-      console.log('Response status:', res.status);
       const data = await res.json();
-      console.log('Response data:', data);
       
       if (data.success) {
         showToast(editingItem ? 'Product updated successfully' : 'Product created successfully', 'success');
@@ -274,11 +243,9 @@ function AdminDashboard({ admin, onLogout, showToast }) {
         fetchProducts();
         fetchDashboardData();
       } else {
-        console.error('Server returned success: false', data);
         showToast(data.error, 'error');
       }
     } catch (error) {
-      console.error('Catch block error:', error);
       showToast('Error saving product', 'error');
     }
   };
@@ -322,7 +289,6 @@ function AdminDashboard({ admin, onLogout, showToast }) {
     const recommendations = [];
     const { lowProducts, avgRating, ratingsDistribution, topProducts, totalFeedback } = dashboardData;
 
-    // No data scenario
     if (totalFeedback === 0) {
       recommendations.push({
         type: 'warning',
@@ -334,7 +300,6 @@ function AdminDashboard({ admin, onLogout, showToast }) {
       return recommendations;
     }
 
-    // Critical: Low-rated products
     if (lowProducts?.length > 0) {
       const lowestProduct = lowProducts[0];
       if (lowestProduct.averageRating < 3) {
@@ -356,7 +321,6 @@ function AdminDashboard({ admin, onLogout, showToast }) {
       }
     }
 
-    // Overall performance analysis
     if (avgRating < 3.5) {
       recommendations.push({
         type: 'critical',
@@ -383,7 +347,6 @@ function AdminDashboard({ admin, onLogout, showToast }) {
       });
     }
 
-    // Negative feedback analysis
     const totalRatings = Object.values(ratingsDistribution).reduce((a, b) => a + b, 0);
     const lowRatings = ratingsDistribution[1] + ratingsDistribution[2];
     const highRatings = ratingsDistribution[4] + ratingsDistribution[5];
@@ -413,7 +376,6 @@ function AdminDashboard({ admin, onLogout, showToast }) {
       }
     }
 
-    // Top performers
     if (topProducts?.length > 0) {
       const topProduct = topProducts[0];
       if (topProduct.averageRating >= 4.5) {
@@ -427,7 +389,6 @@ function AdminDashboard({ admin, onLogout, showToast }) {
       }
     }
 
-    // Product diversity analysis
     if (topProducts?.length >= 3) {
       const top3Avg = topProducts.slice(0, 3).reduce((sum, p) => sum + parseFloat(p.averageRating), 0) / 3;
       if (top3Avg >= 4.3) {
@@ -441,7 +402,6 @@ function AdminDashboard({ admin, onLogout, showToast }) {
       }
     }
 
-    // Limited feedback warning
     if (totalFeedback < 10) {
       recommendations.push({
         type: 'warning',
@@ -489,7 +449,9 @@ function AdminDashboard({ admin, onLogout, showToast }) {
       {/* Sidebar */}
       <div style={{ width: '280px', background: 'linear-gradient(180deg, #1F2937 0%, #111827 100%)', color: 'white', display: 'flex', flexDirection: 'column', boxShadow: '4px 0 24px rgba(0,0,0,0.12)' }}>
         <div style={{ padding: '2rem 1.5rem', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-          <h2 style={{ fontSize: '1.75rem', fontWeight: 'bold', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', marginBottom: '0.5rem' }}>CoffeePlease</h2>
+          <div style={{ marginBottom: '0.5rem' }}>
+            <h2 style={{ fontSize: '1.75rem', fontWeight: 'bold', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>CoffeePlease</h2>
+          </div>
           <p style={{ fontSize: '0.875rem', color: '#9CA3AF' }}>Admin Panel</p>
         </div>
         
@@ -520,7 +482,10 @@ function AdminDashboard({ admin, onLogout, showToast }) {
       <div style={{ flex: 1, padding: '2.5rem', overflowY: 'auto' }}>
         {activeTab === 'dashboard' && dashboardData && (
           <div>
-            <h1 style={{ fontSize: '2.5rem', fontWeight: 'bold', marginBottom: '0.5rem' }}>Dashboard</h1>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+              <h1 style={{ fontSize: '2.5rem', fontWeight: 'bold' }}>Dashboard</h1>
+              <NotificationBell />
+            </div>
             <p style={{ color: '#6B7280', marginBottom: '2rem' }}>Real-time analytics and insights</p>
             
             {/* Stats */}

@@ -31,6 +31,14 @@ const adminSchema = new mongoose.Schema({
     enum: ['admin', 'manager'],
     default: 'admin'
   },
+  resetPasswordOTP: {
+    type: String,
+    select: false
+  },
+  resetPasswordExpires: {
+    type: Date,
+    select: false
+  },
   createdAt: {
     type: Date,
     default: Date.now

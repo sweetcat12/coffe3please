@@ -5,6 +5,7 @@ const User = require('../models/User');
 const Product = require('../models/Product');
 const Feedback = require('../models/Feedback');
 const bcrypt = require('bcryptjs');
+const { generateOTP, sendOTPEmail } = require('../emailService');
 
 // ==================== ADMIN AUTH ====================
 
@@ -49,6 +50,152 @@ router.post('/login', async (req, res) => {
   } catch (error) {
     console.error('Admin Login Error:', error);
     res.status(500).json({ success: false, error: 'Server error' });
+  }
+});
+
+// ===========================
+// FORGOT PASSWORD - SEND OTP
+// ===========================
+router.post('/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        error: 'Please provide your email address'
+      });
+    }
+
+    const admin = await Admin.findOne({ email });
+    if (!admin) {
+      return res.status(404).json({
+        success: false,
+        error: 'No admin account found with this email address'
+      });
+    }
+
+    // Generate OTP
+    const otp = generateOTP();
+    
+    // Save OTP to database (expires in 15 minutes)
+    admin.resetPasswordOTP = otp;
+    admin.resetPasswordExpires = Date.now() + 15 * 60 * 1000; // 15 minutes
+    await admin.save();
+
+    // Send OTP via email
+    const emailResult = await sendOTPEmail(email, otp, admin.username, 'admin');
+    
+    if (!emailResult.success) {
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to send OTP email. Please try again.'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'OTP sent to your email address'
+    });
+  } catch (error) {
+    console.error('Admin Forgot Password Error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Server error. Please try again later.'
+    });
+  }
+});
+
+// ===========================
+// VERIFY OTP
+// ===========================
+router.post('/verify-otp', async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+
+    if (!email || !otp) {
+      return res.status(400).json({
+        success: false,
+        error: 'Please provide email and OTP'
+      });
+    }
+
+    const admin = await Admin.findOne({ 
+      email,
+      resetPasswordOTP: otp,
+      resetPasswordExpires: { $gt: Date.now() }
+    }).select('+resetPasswordOTP +resetPasswordExpires');
+
+    if (!admin) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid or expired OTP'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'OTP verified successfully'
+    });
+  } catch (error) {
+    console.error('Admin Verify OTP Error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Server error. Please try again later.'
+    });
+  }
+});
+
+// ===========================
+// RESET PASSWORD
+// ===========================
+router.post('/reset-password', async (req, res) => {
+  try {
+    const { email, otp, newPassword } = req.body;
+
+    if (!email || !otp || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        error: 'Please provide email, OTP, and new password'
+      });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        success: false,
+        error: 'Password must be at least 6 characters long'
+      });
+    }
+
+    const admin = await Admin.findOne({ 
+      email,
+      resetPasswordOTP: otp,
+      resetPasswordExpires: { $gt: Date.now() }
+    }).select('+resetPasswordOTP +resetPasswordExpires +password');
+
+    if (!admin) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid or expired OTP'
+      });
+    }
+
+    // Update password
+    admin.password = newPassword;
+    admin.resetPasswordOTP = undefined;
+    admin.resetPasswordExpires = undefined;
+    await admin.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Password reset successfully'
+    });
+  } catch (error) {
+    console.error('Admin Reset Password Error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Server error. Please try again later.'
+    });
   }
 });
 

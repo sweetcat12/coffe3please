@@ -1,7 +1,8 @@
-// backend/routes/feedbackRoutes.js
 const express = require('express');
 const router = express.Router();
 const Feedback = require('../models/Feedback');
+const Notification = require('../models/Notification');
+const Product = require('../models/Product');
 
 // @route   POST /api/feedback
 // @desc    Submit product feedback/rating
@@ -9,6 +10,8 @@ const Feedback = require('../models/Feedback');
 router.post('/', async (req, res) => {
   try {
     const { productId, userId, rating, comment, customerName, customerEmail, image } = req.body;
+
+    console.log('Received feedback submission:', { productId, userId, rating, customerName });
 
     // Validation
     if (!productId || !rating) {
@@ -47,6 +50,8 @@ router.post('/', async (req, res) => {
       }
     }
 
+    console.log('Validation passed, creating feedback...');
+
     // Create feedback
     const feedback = await Feedback.create({
       productId,
@@ -58,12 +63,37 @@ router.post('/', async (req, res) => {
       image: image || null
     });
 
+    console.log('Feedback created:', feedback._id);
+
+    // Get product name for notification
+    console.log('Fetching product with ID:', productId);
+    const product = await Product.findById(productId);
+    console.log('Product found:', product ? product.name : 'NOT FOUND');
+
+    const productName = product ? product.name : 'Unknown Product';
+    const userName = customerName || 'Anonymous';
+    const stars = '⭐'.repeat(rating);
+
+    console.log('Creating notification...');
+
+    // Create notification for admin
+    await Notification.create({
+      type: 'feedback',
+      title: 'New Product Review',
+      message: `${userName} rated "${productName}" ${stars} (${rating}/5)`,
+      relatedId: feedback._id,
+      relatedModel: 'Feedback'
+    });
+
+    console.log('Notification created successfully');
+
     res.status(201).json({
       success: true,
       data: feedback
     });
   } catch (error) {
-    console.error('Submit Feedback Error:', error);
+    console.error('Submit Feedback Error:', error.message);
+    console.error('Full error:', error);
     res.status(500).json({
       success: false,
       error: 'Server error. Please try again later.'
