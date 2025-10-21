@@ -27,7 +27,7 @@ function App() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [showBadgeModal, setShowBadgeModal] = useState(false);
-  const [showProfileEdit, setShowProfileEdit] = useState(false); // ✅ NEW
+  const [showProfileEdit, setShowProfileEdit] = useState(false);
   const [newBadges, setNewBadges] = useState([]);
   const [authMode, setAuthMode] = useState('login');
   const [selectedProduct, setSelectedProduct] = useState(null);
@@ -204,7 +204,6 @@ function App() {
     showToast(`Goodbye, ${userName}!`, 'info');
   };
 
-  // ✅ NEW: Handle profile update
   const handleProfileUpdate = (updatedUser) => {
     setCurrentUser(updatedUser);
     localStorage.setItem('currentUser', JSON.stringify(updatedUser));
@@ -227,7 +226,15 @@ function App() {
         body: JSON.stringify(feedbackData),
       });
       const result = await response.json();
+      
       if (result.success) {
+        // ✅ FIX: Check for new badges directly from feedback response
+        if (result.newBadges && result.newBadges.length > 0) {
+          setNewBadges(result.newBadges);
+          setShowBadgeModal(true);
+        }
+
+        // Update local ratings state
         const newRating = {
           rating,
           comment,
@@ -241,11 +248,11 @@ function App() {
           [selectedProduct.id]: [...(prev[selectedProduct.id] || []), newRating]
         }));
         
-        await updatePassport(selectedProduct.id, selectedProduct.category);
-        
         closeRatingModal();
         showToast('Review submitted successfully!', 'success');
-        fetchFeedback();
+        
+        // Refresh feedback to get latest data
+        await fetchFeedback();
       } else {
         showToast('Failed to submit review: ' + result.error, 'error');
       }
@@ -255,23 +262,8 @@ function App() {
     }
   };
 
-  const updatePassport = async (productId, category) => {
-    try {
-      const response = await fetch(`${PASSPORT_API_URL}/update/${currentUser.id}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ productId, category })
-      });
-      
-      const result = await response.json();
-      if (result.success && result.data.newBadges.length > 0) {
-        setNewBadges(result.data.newBadges);
-        setShowBadgeModal(true);
-      }
-    } catch (error) {
-      console.error('Error updating passport:', error);
-    }
-  };
+  // ✅ REMOVED: updatePassport function - no longer needed!
+  // The feedback POST route already handles passport updates
 
   const getAverageRating = (productId) => {
     const productRatings = ratings[productId];
@@ -308,7 +300,7 @@ function App() {
         onLoginClick={() => openAuthModal('login')}
         onSignupClick={() => openAuthModal('signup')}
         onLogout={handleLogout}
-        onEditProfile={() => setShowProfileEdit(true)} // ✅ NEW
+        onEditProfile={() => setShowProfileEdit(true)}
       />
       
       <Routes>
@@ -390,7 +382,6 @@ function App() {
         />
       )}
 
-      {/* ✅ NEW: ProfileEdit Modal */}
       {showProfileEdit && currentUser && (
         <ProfileEdit
           currentUser={currentUser}

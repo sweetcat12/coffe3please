@@ -508,7 +508,7 @@ router.delete('/users/:id', async (req, res) => {
     res.status(500).json({ 
       success: false, 
       error: 'Server error',
-      details: error.message 
+      details: error.message  
     });
   }
 });
@@ -574,13 +574,19 @@ router.delete('/feedback/:id', async (req, res) => {
           // Decrease total reviews
           passport.stats.totalReviews = Math.max(0, passport.stats.totalReviews - 1);
 
-          // Decrease category count
-          if (category && passport.stats.categoriesExplored.has(category)) {
-            const currentCount = passport.stats.categoriesExplored.get(category);
+          // ✅ FIX: Handle categoriesExplored as a plain object, not a Map
+          if (category && passport.stats.categoriesExplored) {
+            // Convert to plain object if it's a Map
+            if (passport.stats.categoriesExplored instanceof Map) {
+              passport.stats.categoriesExplored = Object.fromEntries(passport.stats.categoriesExplored);
+            }
+
+            // Decrease category count
+            const currentCount = passport.stats.categoriesExplored[category] || 0;
             if (currentCount > 1) {
-              passport.stats.categoriesExplored.set(category, currentCount - 1);
+              passport.stats.categoriesExplored[category] = currentCount - 1;
             } else {
-              passport.stats.categoriesExplored.delete(category);
+              delete passport.stats.categoriesExplored[category];
             }
           }
 
@@ -593,7 +599,9 @@ router.delete('/feedback/:id', async (req, res) => {
             // Keep category master badges only if still valid
             if (badge.name.includes('Master')) {
               const badgeCategory = badge.name.replace(' Master', '');
-              const reviewedInCategory = passport.stats.categoriesExplored.get(badgeCategory) || 0;
+              
+              // Use object notation instead of Map methods
+              const reviewedInCategory = passport.stats.categoriesExplored[badgeCategory] || 0;
               const totalInCategory = await Product.countDocuments({ category: badgeCategory });
               
               if (reviewedInCategory >= totalInCategory && totalInCategory > 0) {
@@ -609,12 +617,18 @@ router.delete('/feedback/:id', async (req, res) => {
           passport.badges = newBadges;
           passport.updatedAt = new Date();
           
+          // Mark the paths as modified to ensure MongoDB saves the changes
+          passport.markModified('stats.categoriesExplored');
+          passport.markModified('reviewedProducts');
+          passport.markModified('badges');
+          
           await passport.save();
           
           console.log(`✅ Passport updated for user ${userId}:`, {
             totalReviews: passport.stats.totalReviews,
             rank: passport.rank,
-            badgesCount: passport.badges.length
+            badgesCount: passport.badges.length,
+            categoriesExplored: passport.stats.categoriesExplored
           });
         }
       }

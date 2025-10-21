@@ -383,21 +383,37 @@ router.delete('/:id', async (req, res) => {
           // Decrease total reviews
           passport.stats.totalReviews = Math.max(0, passport.stats.totalReviews - 1);
 
-          // Decrease category count
-          if (category && passport.stats.categoriesExplored.has(category)) {
-            const currentCount = passport.stats.categoriesExplored.get(category);
+          // ✅ FIX: Handle categoriesExplored as a plain object, not a Map
+          if (category && passport.stats.categoriesExplored) {
+            // Convert to plain object if it's a Map
+            if (passport.stats.categoriesExplored instanceof Map) {
+              passport.stats.categoriesExplored = Object.fromEntries(passport.stats.categoriesExplored);
+            }
+
+            // Decrease category count
+            const currentCount = passport.stats.categoriesExplored[category] || 0;
             if (currentCount > 1) {
-              passport.stats.categoriesExplored.set(category, currentCount - 1);
+              passport.stats.categoriesExplored[category] = currentCount - 1;
             } else {
-              passport.stats.categoriesExplored.delete(category);
+              delete passport.stats.categoriesExplored[category];
             }
           }
 
           // Recalculate rank
           passport.rank = passport.calculateRank();
           
+          // Mark the path as modified to ensure MongoDB saves the changes
+          passport.markModified('stats.categoriesExplored');
+          passport.markModified('reviewedProducts');
+          
           // Save the updated passport
           await passport.save();
+
+          console.log(`✅ Passport updated for user ${userId}:`, {
+            totalReviews: passport.stats.totalReviews,
+            rank: passport.rank,
+            categoriesExplored: passport.stats.categoriesExplored
+          });
         }
       }
     }
