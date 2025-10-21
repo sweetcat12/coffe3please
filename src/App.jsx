@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import Header from './components/Header';
 import Hero from './components/Hero';
 import About from './components/About';
@@ -8,18 +9,26 @@ import Footer from './components/Footer';
 import RatingModal from './components/RatingModal';
 import AuthModal from './components/AuthModal';
 import ForgotPasswordModal from './components/ForgotPasswordModal';
+import Passport from './components/Passport';
+import ProfileEdit from './components/ProfileEdit';
+import BadgeUnlockedModal from './components/BadgeUnlockedModal';
+import WelcomeSplash from './components/WelcomeSplash';
 import Toast from './components/Toast';
 import './App.css';
 
 // Backend API URLs
-const AUTH_API_URL = 'http://localhost:5000/api/auth';
-const PRODUCTS_API_URL = 'http://localhost:5000/api/products';
-const FEEDBACK_API_URL = 'http://localhost:5000/api/feedback';
+const AUTH_API_URL = 'http://localhost:5001/api/auth';
+const PRODUCTS_API_URL = 'http://localhost:5001/api/products';
+const FEEDBACK_API_URL = 'http://localhost:5001/api/feedback';
+const PASSPORT_API_URL = 'http://localhost:5001/api/passport';
 
 function App() {
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [showBadgeModal, setShowBadgeModal] = useState(false);
+  const [showProfileEdit, setShowProfileEdit] = useState(false); // ✅ NEW
+  const [newBadges, setNewBadges] = useState([]);
   const [authMode, setAuthMode] = useState('login');
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [ratings, setRatings] = useState({});
@@ -122,7 +131,6 @@ function App() {
     setAuthMode('login');
   };
 
-  // LOGIN
   const handleLogin = async (email, password) => {
     try {
       const response = await fetch(`${AUTH_API_URL}/login`, {
@@ -140,7 +148,8 @@ function App() {
       const userSession = {
         id: data.user.id,
         email: data.user.email,
-        name: data.user.name
+        name: data.user.name,
+        username: data.user.username
       };
       localStorage.setItem('currentUser', JSON.stringify(userSession));
       setCurrentUser(userSession);
@@ -155,13 +164,12 @@ function App() {
     }
   };
 
-  // SIGNUP
-  const handleSignup = async (email, password, name, phone) => {
+  const handleSignup = async (email, password, name, phone, username) => {
     try {
       const response = await fetch(`${AUTH_API_URL}/signup`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, phone, password }),
+        body: JSON.stringify({ username, name, email, phone, password }),
       });
 
       const data = await response.json();
@@ -173,12 +181,13 @@ function App() {
       const userSession = {
         id: data.user.id,
         email: data.user.email,
-        name: data.user.name
+        name: data.user.name,
+        username: data.user.username
       };
       localStorage.setItem('currentUser', JSON.stringify(userSession));
       setCurrentUser(userSession);
       closeAuthModal();
-      showToast(`Account created! Welcome, ${data.user.name}!`, 'success');
+      showToast(`Account created! Welcome, ${data.user.name}! 🎉 Your Coffee Passport is ready!`, 'success');
       return { success: true };
 
     } catch (error) {
@@ -193,6 +202,14 @@ function App() {
     setCurrentUser(null);
     localStorage.removeItem('currentUser');
     showToast(`Goodbye, ${userName}!`, 'info');
+  };
+
+  // ✅ NEW: Handle profile update
+  const handleProfileUpdate = (updatedUser) => {
+    setCurrentUser(updatedUser);
+    localStorage.setItem('currentUser', JSON.stringify(updatedUser));
+    setShowProfileEdit(false);
+    showToast('Profile updated successfully!', 'success');
   };
 
   const submitRating = async (rating, comment, image = null) => {
@@ -223,6 +240,9 @@ function App() {
           ...prev,
           [selectedProduct.id]: [...(prev[selectedProduct.id] || []), newRating]
         }));
+        
+        await updatePassport(selectedProduct.id, selectedProduct.category);
+        
         closeRatingModal();
         showToast('Review submitted successfully!', 'success');
         fetchFeedback();
@@ -235,6 +255,24 @@ function App() {
     }
   };
 
+  const updatePassport = async (productId, category) => {
+    try {
+      const response = await fetch(`${PASSPORT_API_URL}/update/${currentUser.id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ productId, category })
+      });
+      
+      const result = await response.json();
+      if (result.success && result.data.newBadges.length > 0) {
+        setNewBadges(result.data.newBadges);
+        setShowBadgeModal(true);
+      }
+    } catch (error) {
+      console.error('Error updating passport:', error);
+    }
+  };
+
   const getAverageRating = (productId) => {
     const productRatings = ratings[productId];
     if (!productRatings || productRatings.length === 0) return 0;
@@ -242,14 +280,8 @@ function App() {
     return (sum / productRatings.length).toFixed(1);
   };
 
-  return (
-    <div className="App">
-      <Header 
-        currentUser={currentUser}
-        onLoginClick={() => openAuthModal('login')}
-        onSignupClick={() => openAuthModal('signup')}
-        onLogout={handleLogout}
-      />
+  const HomePage = () => (
+    <>
       <Hero currentUser={currentUser} />
       <About />
       {loading ? (
@@ -266,6 +298,58 @@ function App() {
         />
       )}
       <Contact />
+    </>
+  );
+
+  return (
+    <div className="App">
+      <Header 
+        currentUser={currentUser}
+        onLoginClick={() => openAuthModal('login')}
+        onSignupClick={() => openAuthModal('signup')}
+        onLogout={handleLogout}
+        onEditProfile={() => setShowProfileEdit(true)} // ✅ NEW
+      />
+      
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/home" element={<HomePage />} />
+        <Route 
+          path="/passport" 
+          element={
+            currentUser ? (
+              <Passport currentUser={currentUser} />
+            ) : (
+              <div style={{ 
+                minHeight: '60vh', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                flexDirection: 'column',
+                gap: '1rem'
+              }}>
+                <h2>Please login to view your Coffee Passport</h2>
+                <button 
+                  onClick={() => openAuthModal('login')}
+                  style={{
+                    padding: '0.75rem 1.5rem',
+                    backgroundColor: '#D97706',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '0.5rem',
+                    cursor: 'pointer',
+                    fontSize: '1rem'
+                  }}
+                >
+                  Login
+                </button>
+              </div>
+            )
+          } 
+        />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+      
       <Footer />
 
       {showRatingModal && (
@@ -296,6 +380,22 @@ function App() {
             setShowAuthModal(true);
           }}
           onSuccess={handleForgotPasswordSuccess}
+        />
+      )}
+
+      {showBadgeModal && (
+        <BadgeUnlockedModal
+          badges={newBadges}
+          closeModal={() => setShowBadgeModal(false)}
+        />
+      )}
+
+      {/* ✅ NEW: ProfileEdit Modal */}
+      {showProfileEdit && currentUser && (
+        <ProfileEdit
+          currentUser={currentUser}
+          onClose={() => setShowProfileEdit(false)}
+          onUpdateSuccess={handleProfileUpdate}
         />
       )}
 

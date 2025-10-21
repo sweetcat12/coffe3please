@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 
 const AuthModal = ({ mode, closeModal, onLogin, onSignup, switchMode, onForgotPassword }) => {
   const [formData, setFormData] = useState({
+    username: '',
     name: '',
     email: '',
     phone: '',
@@ -37,8 +38,24 @@ const AuthModal = ({ mode, closeModal, onLogin, onSignup, switchMode, onForgotPa
         setError(result.error);
       }
     } else {
-      if (!formData.name || !formData.email || !formData.phone || !formData.password || !formData.confirmPassword) {
+      if (!formData.username || !formData.name || !formData.email || !formData.phone || !formData.password || !formData.confirmPassword) {
         setError('Please fill in all fields');
+        return;
+      }
+
+      // Validate username
+      if (formData.username.length < 3) {
+        setError('Username must be at least 3 characters');
+        return;
+      }
+
+      if (formData.username.length > 20) {
+        setError('Username must be less than 20 characters');
+        return;
+      }
+
+      if (!/^[a-zA-Z0-9_]+$/.test(formData.username)) {
+        setError('Username can only contain letters, numbers, and underscores');
         return;
       }
 
@@ -57,7 +74,7 @@ const AuthModal = ({ mode, closeModal, onLogin, onSignup, switchMode, onForgotPa
         return;
       }
 
-      const result = onSignup(formData.email, formData.password, formData.name, formData.phone);
+      const result = onSignup(formData.email, formData.password, formData.name, formData.phone, formData.username);
       if (!result.success) {
         setError(result.error);
       }
@@ -165,6 +182,50 @@ const AuthModal = ({ mode, closeModal, onLogin, onSignup, switchMode, onForgotPa
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           {mode === 'signup' && (
             <>
+              <div>
+                <label htmlFor="username" style={{
+                  display: 'block',
+                  fontSize: '0.875rem',
+                  fontWeight: '600',
+                  color: '#374151',
+                  marginBottom: '0.25rem'
+                }}>
+                  Username *
+                </label>
+                <input
+                  type="text"
+                  id="username"
+                  name="username"
+                  value={formData.username}
+                  onChange={handleChange}
+                  placeholder="coffee_lover123"
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem 1rem',
+                    border: '1px solid #D1D5DB',
+                    borderRadius: '0.5rem',
+                    outline: 'none',
+                    transition: 'all 0.2s',
+                    fontSize: '1rem'
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.borderColor = '#F59E0B';
+                    e.target.style.boxShadow = '0 0 0 3px rgba(245, 158, 11, 0.1)';
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = '#D1D5DB';
+                    e.target.style.boxShadow = 'none';
+                  }}
+                />
+                <p style={{
+                  fontSize: '0.75rem',
+                  color: '#6B7280',
+                  marginTop: '0.25rem'
+                }}>
+                  This will be displayed on the leaderboard
+                </p>
+              </div>
+
               <div>
                 <label htmlFor="name" style={{
                   display: 'block',
@@ -384,7 +445,6 @@ const AuthModal = ({ mode, closeModal, onLogin, onSignup, switchMode, onForgotPa
           </button>
         </form>
 
-        {/* Forgot Password Link - Only show in login mode */}
         {mode === 'login' && (
           <div style={{ marginTop: '1rem', textAlign: 'center' }}>
             <button

@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 const Notification = require('../models/Notification');
+const Passport = require('../models/Passport');
 const { generateOTP, sendOTPEmail } = require('../emailService');
 
 // ===========================
@@ -9,52 +10,143 @@ const { generateOTP, sendOTPEmail } = require('../emailService');
 // ===========================
 router.post('/signup', async (req, res) => {
   try {
-    const { name, email, phone, password } = req.body;
+    const { username, name, email, phone, password } = req.body;
 
-    if (!name || !email || !phone || !password) {
+    console.log('=== SIGNUP REQUEST ===');
+    console.log('Received data:', { username, name, email, phone, passwordLength: password?.length });
+
+    // Validate all required fields
+    if (!username || !name || !email || !phone || !password) {
+      console.log('Missing fields');
       return res.status(400).json({
         success: false,
-        error: 'Please fill in all fields (name, email, phone, password)'
+        error: 'Please fill in all fields (username, name, email, phone, password)'
       });
     }
 
+    // Validate password length
+    if (password.length < 6) {
+      console.log('Password too short');
+      return res.status(400).json({
+        success: false,
+        error: 'Password must be at least 6 characters long'
+      });
+    }
+
+    // Check if username already exists
+    console.log('Checking if username exists...');
+    const existingUsername = await User.findOne({ username });
+    if (existingUsername) {
+      console.log('Username already taken:', username);
+      return res.status(400).json({
+        success: false,
+        error: 'Username is already taken'
+      });
+    }
+
+    // Check if email already exists
+    console.log('Checking if email exists...');
     const existingUser = await User.findOne({ email });
     if (existingUser) {
+      console.log('Email already registered:', email);
       return res.status(400).json({
         success: false,
         error: 'Email is already registered'
       });
     }
 
+    // Create new user
+    console.log('Creating new user...');
     const user = await User.create({
+      username,
       name,
       email,
       phone,
       password
     });
 
-    await Notification.create({
-      type: 'user',
-      title: 'New User Registered',
-      message: `${name} (${email}) has just created an account.`,
-      relatedId: user._id,
-      relatedModel: 'User'
-    });
+    console.log('✅ User created successfully:', user._id);
 
+    // Auto-create passport for new user
+    console.log('Creating passport...');
+    try {
+      const passportData = {
+        userId: user._id,
+        reviewedProducts: [],
+        badges: [],
+        stats: {
+          totalReviews: 0,
+          currentStreak: 0,
+          longestStreak: 0,
+          lastReviewDate: null,
+          categoriesExplored: {}
+        },
+        rank: 'Newbie'
+      };
+      console.log('Passport data:', JSON.stringify(passportData, null, 2));
+
+      const passport = await Passport.create(passportData);
+      console.log('✅ Passport created successfully:', passport._id);
+    } catch (passportError) {
+      console.error('❌ Passport creation error:', passportError.message);
+      console.error('Passport error details:', passportError);
+      // Don't throw - continue even if passport fails
+    }
+
+    // Create notification for new user
+    console.log('Creating notification...');
+    try {
+      await Notification.create({
+        type: 'user',
+        title: 'New User Registered',
+        message: `${name} (${email}) has just created an account.`,
+        relatedId: user._id,
+        relatedModel: 'User'
+      });
+      console.log('✅ Notification created successfully');
+    } catch (notificationError) {
+      console.error('❌ Notification creation error:', notificationError.message);
+      // Don't throw - continue even if notification fails
+    }
+
+    console.log('=== SIGNUP SUCCESS ===');
     res.status(201).json({
       success: true,
       message: 'Account created successfully',
       user: {
         id: user._id,
         name: user.name,
-        email: user.email
+        email: user.email,
+        username: user.username
       }
     });
   } catch (error) {
-    console.error('Signup Error:', error);
+    console.error('❌ === SIGNUP ERROR ===');
+    console.error('Error name:', error.name);
+    console.error('Error message:', error.message);
+    console.error('Error code:', error.code);
+    console.error('Full error:', error);
+    console.error('Stack:', error.stack);
+
+    let errorMessage = 'Server error. Please try again later.';
+    let errorDetails = {};
+
+    // Handle specific MongoDB errors
+    if (error.code === 11000) {
+      const field = Object.keys(error.keyPattern)[0];
+      errorMessage = `This ${field} is already registered`;
+    } else if (error.name === 'ValidationError') {
+      errorMessage = Object.values(error.errors).map(err => err.message).join(', ');
+    }
+
     res.status(500).json({
       success: false,
-      error: 'Server error. Please try again later.'
+      error: errorMessage,
+      details: process.env.NODE_ENV === 'development' ? {
+        name: error.name,
+        message: error.message,
+        code: error.code
+      } : undefined
     });
   }
 });
@@ -95,14 +187,16 @@ router.post('/login', async (req, res) => {
       user: {
         id: user._id,
         name: user.name,
-        email: user.email
+        email: user.email,
+        username: user.username
       }
     });
   } catch (error) {
-    console.error('Login Error:', error);
+    console.error('Login Error:', error.message);
     res.status(500).json({
       success: false,
-      error: 'Server error. Please try again later.'
+      error: 'Server error. Please try again later.',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 });
@@ -129,17 +223,14 @@ router.post('/forgot-password', async (req, res) => {
       });
     }
 
-    // Generate OTP
     const otp = generateOTP();
-    
-    // Save OTP to database (expires in 15 minutes)
+
     user.resetPasswordOTP = otp;
-    user.resetPasswordExpires = Date.now() + 15 * 60 * 1000; // 15 minutes
+    user.resetPasswordExpires = Date.now() + 15 * 60 * 1000;
     await user.save();
 
-    // Send OTP via email
     const emailResult = await sendOTPEmail(email, otp, user.name, 'customer');
-    
+
     if (!emailResult.success) {
       return res.status(500).json({
         success: false,
@@ -152,10 +243,11 @@ router.post('/forgot-password', async (req, res) => {
       message: 'OTP sent to your email address'
     });
   } catch (error) {
-    console.error('Forgot Password Error:', error);
+    console.error('Forgot Password Error:', error.message);
     res.status(500).json({
       success: false,
-      error: 'Server error. Please try again later.'
+      error: 'Server error. Please try again later.',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 });
@@ -174,7 +266,7 @@ router.post('/verify-otp', async (req, res) => {
       });
     }
 
-    const user = await User.findOne({ 
+    const user = await User.findOne({
       email,
       resetPasswordOTP: otp,
       resetPasswordExpires: { $gt: Date.now() }
@@ -192,10 +284,11 @@ router.post('/verify-otp', async (req, res) => {
       message: 'OTP verified successfully'
     });
   } catch (error) {
-    console.error('Verify OTP Error:', error);
+    console.error('Verify OTP Error:', error.message);
     res.status(500).json({
       success: false,
-      error: 'Server error. Please try again later.'
+      error: 'Server error. Please try again later.',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 });
@@ -221,7 +314,7 @@ router.post('/reset-password', async (req, res) => {
       });
     }
 
-    const user = await User.findOne({ 
+    const user = await User.findOne({
       email,
       resetPasswordOTP: otp,
       resetPasswordExpires: { $gt: Date.now() }
@@ -234,7 +327,6 @@ router.post('/reset-password', async (req, res) => {
       });
     }
 
-    // Update password
     user.password = newPassword;
     user.resetPasswordOTP = undefined;
     user.resetPasswordExpires = undefined;
@@ -245,10 +337,11 @@ router.post('/reset-password', async (req, res) => {
       message: 'Password reset successfully'
     });
   } catch (error) {
-    console.error('Reset Password Error:', error);
+    console.error('Reset Password Error:', error.message);
     res.status(500).json({
       success: false,
-      error: 'Server error. Please try again later.'
+      error: 'Server error. Please try again later.',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 });
@@ -265,10 +358,148 @@ router.get('/users', async (req, res) => {
       users
     });
   } catch (error) {
-    console.error('Get Users Error:', error);
+    console.error('Get Users Error:', error.message);
     res.status(500).json({
       success: false,
-      error: 'Server error. Please try again later.'
+      error: 'Server error. Please try again later.',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+// ===========================
+// GET USER BY ID
+// ===========================
+router.get('/user/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const user = await User.findById(userId).select('-password');
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      user: {
+        id: user._id,
+        username: user.username,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        createdAt: user.createdAt
+      }
+    });
+  } catch (error) {
+    console.error('Get User Error:', error.message);
+    res.status(500).json({
+      success: false,
+      error: 'Server error. Please try again later.',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+// ===========================
+// UPDATE USER PROFILE
+// ===========================
+router.put('/update-profile/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { username, name, phone, currentPassword, newPassword } = req.body;
+
+    // Find user
+    const user = await User.findById(userId).select('+password');
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found'
+      });
+    }
+
+    // Check if username is being changed and if it's already taken
+    if (username && username !== user.username) {
+      const existingUsername = await User.findOne({ username });
+      if (existingUsername) {
+        return res.status(400).json({
+          success: false,
+          error: 'Username is already taken'
+        });
+      }
+    }
+
+    // Validate username
+    if (username) {
+      if (username.length < 3 || username.length > 20) {
+        return res.status(400).json({
+          success: false,
+          error: 'Username must be between 3-20 characters'
+        });
+      }
+
+      if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+        return res.status(400).json({
+          success: false,
+          error: 'Username can only contain letters, numbers, and underscores'
+        });
+      }
+    }
+
+    // If changing password, verify current password
+    if (newPassword) {
+      if (!currentPassword) {
+        return res.status(400).json({
+          success: false,
+          error: 'Current password is required to change password'
+        });
+      }
+
+      const isPasswordCorrect = await user.comparePassword(currentPassword);
+      if (!isPasswordCorrect) {
+        return res.status(401).json({
+          success: false,
+          error: 'Current password is incorrect'
+        });
+      }
+
+      if (newPassword.length < 6) {
+        return res.status(400).json({
+          success: false,
+          error: 'New password must be at least 6 characters long'
+        });
+      }
+
+      user.password = newPassword;
+    }
+
+    // Update other fields
+    if (username) user.username = username;
+    if (name) user.name = name;
+    if (phone) user.phone = phone;
+    user.updatedAt = Date.now();
+
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Profile updated successfully',
+      user: {
+        id: user._id,
+        username: user.username,
+        name: user.name,
+        email: user.email,
+        phone: user.phone
+      }
+    });
+  } catch (error) {
+    console.error('Update Profile Error:', error.message);
+    res.status(500).json({
+      success: false,
+      error: 'Server error. Please try again later.',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 });

@@ -263,11 +263,10 @@ body {
   justify-content: center;
   text-align: center;
   color: white;
-  margin-top: 80px;
+  margin-top: 0; /* ← CHANGE FROM 80px to 0 */
   position: relative;
   overflow: hidden;
 }
-
 .hero::before {
   content: '';
   position: absolute;
@@ -1372,4 +1371,562 @@ section {
 ::-moz-selection {
   background: #6f4e37;
   color: white;
+}
+
+/* ===== MOBILE RESPONSIVE STYLES ===== */
+
+/* Tablet (768px and down) */
+@media (max-width: 768px) {
+  .container {
+    padding: 0 1.5rem;
+  }
+
+  /* HEADER ADJUSTMENTS */
+  .header {
+    padding: 0.8rem 0;
+  }
+
+  .nav {
+    padding: 0 1.2rem;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .logo {
+    gap: 0.5rem;
+  }
+
+  .logo-img {
+    width: 45px;
+    height: 45px;
+    font-size: 1.3rem;
+  }
+
+  .logo-text {
+    font-size: 1.3rem;
+  }
+
+  .nav-links {
+    gap: 0.5rem;
+    font-size: 0.85rem;
+  }
+
+  .nav-links a {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.8rem;
+  }
+
+  .auth-btn {
+    padding: 0.5rem 1rem;
+    font-size: 0.75rem;
+  }
+
+  .user-button {
+    padding: 0.5rem 1rem;
+    font-size: 0.85rem;
+  }
+
+  /* HERO SECTION */
+  .hero {
+    margin-top: 70px;
+    min-height: 70vh;
+    padding: 1rem;
+  }
+
+  .hero-content {
+    padding: 1rem;
+  }
+
+  .hero-content h1 {
+    font-size: 2rem;
+    margin-bottom: 1rem;
+  }
+
+  .hero-content p {
+    font-size: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .cta-button {
+    padding: 0.9rem 2rem;
+    font-size: 0.9rem;
+  }
+
+  /* ABOUT SECTION */
+  .about {
+    padding: 4rem 1.5rem;
+  }
+
+  .about h2 {
+    font-size: 1.8rem;
+    margin-bottom: 0.8rem;
+  }
+
+  .about h2::after {
+    width: 80px;
+    bottom: -12px;
+  }
+
+  .about p {
+    font-size: 1rem;
+    margin-top: 2rem;
+  }
+
+  /* MENU SECTION */
+  .menu {
+    padding: 4rem 1.5rem;
+  }
+
+  .menu h2 {
+    font-size: 1.8rem;
+    margin-bottom: 2.5rem;
+  }
+
+  .menu h2::after {
+    width: 80px;
+    bottom: -12px;
+  }
+
+  .menu-categories {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+
+  .menu-category {
+    padding: 1.8rem;
+  }
+
+  .menu-category h3 {
+    font-size: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .menu-item {
+    padding: 1.2rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .item-info h4 {
+    font-size: 1.2rem;
+  }
+
+  .item-info p {
+    font-size: 0.9rem;
+  }
+
+  .rate-btn {
+    padding: 0.7rem 1.5rem;
+    font-size: 0.8rem;
+  }
+
+  /* CONTACT SECTION */
+  .contact {
+    padding: 4rem 1.5rem;
+  }
+
+  .contact h2 {
+    font-size: 1.8rem;
+    margin-bottom: 2rem;
+  }
+
+  .contact-info {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+  }
+
+  .contact-item {
+    padding: 1.8rem;
+  }
+
+  .contact-item h3 {
+    font-size: 1.3rem;
+    margin-bottom: 1rem;
+  }
+
+  .contact-item p {
+    font-size: 0.95rem;
+  }
+
+  /* MODAL */
+  .modal-content {
+    width: 95%;
+    padding: 1.5rem;
+    max-height: 85vh;
+  }
+
+  .modal-header h2 {
+    font-size: 1.5rem;
+  }
+
+  .star-rating {
+    font-size: 2.2rem;
+    gap: 0.4rem;
+  }
+
+  .form-group input,
+  .form-group textarea {
+    padding: 0.85rem 1rem;
+    font-size: 1rem;
+  }
+
+  .submit-btn {
+    padding: 1rem;
+    font-size: 1rem;
+  }
+
+  /* FOOTER */
+  .footer {
+    padding: 1.5rem;
+  }
+
+  .footer p {
+    font-size: 0.95rem;
+  }
+
+  /* TOAST */
+  .toast {
+    right: 10px;
+    left: 10px;
+    top: 80px;
+    min-width: auto;
+    padding: 1rem 1.2rem;
+  }
+
+  /* SCROLLBAR */
+  section {
+    scroll-margin-top: 70px;
+  }
+}
+
+/* Mobile (480px and down) */
+@media (max-width: 480px) {
+  .container {
+    padding: 0 1rem;
+  }
+
+  /* HEADER ADJUSTMENTS */
+  .nav {
+    padding: 0.8rem;
+    gap: 0.3rem;
+  }
+
+  .logo {
+    gap: 0.4rem;
+  }
+
+  .logo-img {
+    width: 40px;
+    height: 40px;
+    font-size: 1.1rem;
+  }
+
+  .logo-text {
+    font-size: 1.1rem;
+  }
+
+  .nav-links {
+    gap: 0.3rem;
+    font-size: 0.75rem;
+  }
+
+  .nav-links a {
+    padding: 0.3rem 0.6rem;
+    font-size: 0.7rem;
+  }
+
+  .nav-links a::before {
+    width: 0 !important;
+  }
+
+  .auth-btn {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.7rem;
+  }
+
+  .user-button {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.75rem;
+  }
+
+  .user-icon {
+    font-size: 1rem;
+  }
+
+  /* HERO SECTION */
+  .hero {
+    margin-top: 60px;
+    min-height: 60vh;
+  }
+
+  .hero-content {
+    padding: 0.8rem;
+  }
+
+  .hero-content h1 {
+    font-size: 1.5rem;
+    margin-bottom: 0.8rem;
+    letter-spacing: 0;
+  }
+
+  .hero-content p {
+    font-size: 0.9rem;
+    margin-bottom: 1.2rem;
+  }
+
+  .cta-button {
+    padding: 0.8rem 1.5rem;
+    font-size: 0.8rem;
+  }
+
+  /* ABOUT SECTION */
+  .about {
+    padding: 3rem 1rem;
+  }
+
+  .about h2 {
+    font-size: 1.5rem;
+  }
+
+  .about h2::after {
+    width: 60px;
+    height: 4px;
+  }
+
+  .about p {
+    font-size: 0.95rem;
+    margin-top: 1.5rem;
+  }
+
+  /* MENU SECTION */
+  .menu {
+    padding: 3rem 1rem;
+  }
+
+  .menu h2 {
+    font-size: 1.5rem;
+    margin-bottom: 2rem;
+  }
+
+  .menu-categories {
+    gap: 1.2rem;
+  }
+
+  .menu-category {
+    padding: 1.5rem;
+  }
+
+  .menu-category h3 {
+    font-size: 1.3rem;
+    margin-bottom: 1.2rem;
+  }
+
+  .menu-item {
+    padding: 1rem;
+    margin-bottom: 1.2rem;
+  }
+
+  .item-info h4 {
+    font-size: 1.05rem;
+  }
+
+  .item-info p {
+    font-size: 0.85rem;
+  }
+
+  .stars {
+    gap: 2px;
+  }
+
+  .star {
+    font-size: 1.1rem;
+  }
+
+  .rate-btn {
+    padding: 0.6rem 1.2rem;
+    font-size: 0.75rem;
+  }
+
+  /* CONTACT SECTION */
+  .contact {
+    padding: 3rem 1rem;
+  }
+
+  .contact h2 {
+    font-size: 1.5rem;
+  }
+
+  .contact-item {
+    padding: 1.5rem;
+  }
+
+  .contact-item h3 {
+    font-size: 1.2rem;
+    margin-bottom: 0.8rem;
+  }
+
+  .contact-item p {
+    font-size: 0.9rem;
+  }
+
+  /* MODAL */
+  .modal-overlay {
+    padding: 1rem;
+  }
+
+  .modal-content {
+    width: 100%;
+    padding: 1.2rem;
+    border-radius: 15px;
+  }
+
+  .modal-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .modal-header h2 {
+    font-size: 1.3rem;
+  }
+
+  .close-btn {
+    align-self: flex-end;
+  }
+
+  .current-user-info {
+    padding: 0.8rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .form-group {
+    margin-bottom: 1.5rem;
+  }
+
+  .form-group label {
+    font-size: 0.95rem;
+    margin-bottom: 0.6rem;
+  }
+
+  .star-rating {
+    font-size: 2rem;
+    gap: 0.4rem;
+  }
+
+  .form-group input,
+  .form-group textarea {
+    padding: 0.8rem;
+    font-size: 1rem;
+  }
+
+  .submit-btn {
+    padding: 0.9rem;
+    font-size: 0.95rem;
+  }
+
+  .review-item {
+    padding: 1.2rem;
+  }
+
+  /* IMAGE UPLOAD */
+  .image-upload-label {
+    padding: 1.5rem;
+  }
+
+  .upload-placeholder {
+    gap: 0.8rem;
+  }
+
+  /* FOOTER */
+  .footer {
+    padding: 1.2rem;
+  }
+
+  .footer p {
+    font-size: 0.9rem;
+  }
+
+  /* TOAST */
+  .toast {
+    right: 0;
+    left: 0;
+    top: 70px;
+    border-radius: 10px;
+    padding: 1rem;
+    min-width: 0;
+  }
+
+  .toast-content {
+    gap: 0.8rem;
+  }
+
+  .toast-icon {
+    font-size: 1.5rem;
+  }
+
+  .toast-message {
+    font-size: 0.9rem;
+  }
+
+  /* USER DROPDOWN */
+  .user-dropdown {
+    min-width: 180px;
+    right: -50px;
+  }
+
+  /* SCROLLBAR */
+  section {
+    scroll-margin-top: 60px;
+  }
+}
+
+/* Extra Small Devices (360px and down) */
+@media (max-width: 360px) {
+  .logo-text {
+    font-size: 0.9rem;
+  }
+
+  .nav-links {
+    font-size: 0.65rem;
+  }
+
+  .nav-links a {
+    padding: 0.2rem 0.4rem;
+  }
+
+  .hero-content h1 {
+    font-size: 1.2rem;
+  }
+
+  .hero-content p {
+    font-size: 0.85rem;
+  }
+
+  .menu-category h3 {
+    font-size: 1.2rem;
+  }
+
+  .item-info h4 {
+    font-size: 0.95rem;
+  }
+}
+
+/* Touch-friendly adjustments */
+@media (hover: none) and (pointer: coarse) {
+  button,
+  a {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  .rate-btn,
+  .cta-button,
+  .submit-btn {
+    padding: 1rem 1.5rem;
+  }
+
+  .nav-links a:hover::before {
+    width: 0;
+  }
 }

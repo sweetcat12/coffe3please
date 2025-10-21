@@ -8,7 +8,7 @@ const productRoutes = require('./routes/productRoutes');
 const feedbackRoutes = require('./routes/feedbackRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
-
+const passportRoutes = require('./routes/passportRoutes'); // NEW
 // Initialize app BEFORE using it
 const app = express();
 
@@ -26,7 +26,7 @@ app.use('/api/products', productRoutes);
 app.use('/api/feedback', feedbackRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/notifications', notificationRoutes);
-
+app.use('/api/passport', passportRoutes); // NEW
 // Basic route for testing
 app.get('/', (req, res) => {
   res.json({ message: 'CoffeePlease API is running!' });
@@ -46,3 +46,5 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`🚀 Server is running on port ${PORT}`);
 });
+
+module.exports = app;

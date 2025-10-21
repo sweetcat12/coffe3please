@@ -13,7 +13,7 @@ function NotificationBell() {
 
   const fetchNotifications = async () => {
     try {
-      const res = await fetch('http://localhost:5000/api/notifications');
+      const res = await fetch('http://localhost:5001/api/notifications');
       const data = await res.json();
       if (data.success) {
         setNotifications(data.data);
@@ -26,7 +26,7 @@ function NotificationBell() {
 
   const markAsRead = async (id) => {
     try {
-      await fetch(`http://localhost:5000/api/notifications/${id}/read`, { method: 'PUT' });
+      await fetch(`http://localhost:5001/api/notifications/${id}/read`, { method: 'PUT' });
       fetchNotifications();
     } catch (error) {
       console.error('Error marking notification as read:', error);

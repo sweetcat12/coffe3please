@@ -5,6 +5,7 @@ const User = require('../models/User');
 const Product = require('../models/Product');
 const Feedback = require('../models/Feedback');
 const bcrypt = require('bcryptjs');
+const Passport = require('../models/Passport');
 const { generateOTP, sendOTPEmail } = require('../emailService');
 
 // ==================== ADMIN AUTH ====================
@@ -411,16 +412,16 @@ router.get('/users', async (req, res) => {
 router.post('/users', async (req, res) => {
   try {
     console.log('Create user request body:', req.body);
-    const { name, email, phone, password } = req.body;
+    const { username, name, email, phone, password } = req.body;
 
-    if (!name || !email || !phone || !password) {
+    if (!username || !name || !email || !phone || !password) {
       return res.status(400).json({
         success: false,
         error: 'Please provide all required fields'
       });
     }
 
-    const existingUser = await User.findOne({ email });
+    const existingUser = await User.findOne({ $or: [{ email }, { username }] });
     if (existingUser) {
       return res.status(400).json({
         success: false,
@@ -428,12 +429,13 @@ router.post('/users', async (req, res) => {
       });
     }
 
-    const user = await User.create({ name, email, phone, password });
+    const user = await User.create({ username, name, email, phone, password });
 
     res.status(201).json({
       success: true,
       data: {
         id: user._id,
+        username: user.username,
         name: user.name,
         email: user.email,
         phone: user.phone
@@ -449,11 +451,11 @@ router.post('/users', async (req, res) => {
 router.put('/users/:id', async (req, res) => {
   try {
     console.log('Update user request:', req.params.id, req.body);
-    const { name, email, phone } = req.body;
+    const { username, name, email, phone } = req.body;
 
     const user = await User.findByIdAndUpdate(
       req.params.id,
-      { name, email, phone },
+      { username, name, email, phone },
       { new: true, runValidators: true }
     ).select('-password');
 
@@ -475,23 +477,39 @@ router.put('/users/:id', async (req, res) => {
 });
 
 // @route   DELETE /api/admin/users/:id
+// @desc    Delete user and their associated data (passport, feedback)
 router.delete('/users/:id', async (req, res) => {
   try {
     console.log('Delete user request:', req.params.id);
-    const user = await User.findByIdAndDelete(req.params.id);
+    
+    const user = await User.findById(req.params.id);
     if (!user) {
       return res.status(404).json({
         success: false,
         error: 'User not found'
       });
     }
+
+    // Delete user's passport
+    await Passport.findOneAndDelete({ userId: req.params.id });
+    
+    // Delete user's feedback
+    await Feedback.deleteMany({ userId: req.params.id });
+    
+    // Delete the user
+    await User.findByIdAndDelete(req.params.id);
+
     res.status(200).json({
       success: true,
-      message: 'User deleted successfully'
+      message: 'User and associated data deleted successfully'
     });
   } catch (error) {
     console.error('Delete User Error:', error);
-    res.status(500).json({ success: false, error: 'Server error' });
+    res.status(500).json({ 
+      success: false, 
+      error: 'Server error',
+      details: error.message 
+    });
   }
 });
 
@@ -502,7 +520,7 @@ router.get('/feedback', async (req, res) => {
   try {
     const feedback = await Feedback.find()
       .populate('productId', 'name category')
-      .populate('userId', 'name email')
+      .populate('userId', 'username name email')
       .sort({ createdAt: -1 });
     
     res.status(200).json({
@@ -517,23 +535,102 @@ router.get('/feedback', async (req, res) => {
 });
 
 // @route   DELETE /api/admin/feedback/:id
+// @desc    Delete feedback and update user's passport
 router.delete('/feedback/:id', async (req, res) => {
   try {
     console.log('Delete feedback request:', req.params.id);
-    const feedback = await Feedback.findByIdAndDelete(req.params.id);
+    
+    // Find the feedback first to get userId and productId
+    const feedback = await Feedback.findById(req.params.id);
     if (!feedback) {
       return res.status(404).json({
         success: false,
         error: 'Feedback not found'
       });
     }
+
+    const { userId, productId } = feedback;
+
+    // Delete the feedback
+    await Feedback.findByIdAndDelete(req.params.id);
+
+    // Update the user's passport if they have one
+    if (userId) {
+      const passport = await Passport.findOne({ userId });
+      
+      if (passport) {
+        // Find the reviewed product
+        const productIndex = passport.reviewedProducts.findIndex(
+          item => item.productId.toString() === productId.toString()
+        );
+
+        if (productIndex !== -1) {
+          const product = passport.reviewedProducts[productIndex];
+          const category = product.category;
+
+          // Remove from reviewed products
+          passport.reviewedProducts.splice(productIndex, 1);
+
+          // Decrease total reviews
+          passport.stats.totalReviews = Math.max(0, passport.stats.totalReviews - 1);
+
+          // Decrease category count
+          if (category && passport.stats.categoriesExplored.has(category)) {
+            const currentCount = passport.stats.categoriesExplored.get(category);
+            if (currentCount > 1) {
+              passport.stats.categoriesExplored.set(category, currentCount - 1);
+            } else {
+              passport.stats.categoriesExplored.delete(category);
+            }
+          }
+
+          // Recalculate rank
+          passport.rank = passport.calculateRank();
+
+          // Remove badges that no longer meet requirements
+          const newBadges = [];
+          for (const badge of passport.badges) {
+            // Keep category master badges only if still valid
+            if (badge.name.includes('Master')) {
+              const badgeCategory = badge.name.replace(' Master', '');
+              const reviewedInCategory = passport.stats.categoriesExplored.get(badgeCategory) || 0;
+              const totalInCategory = await Product.countDocuments({ category: badgeCategory });
+              
+              if (reviewedInCategory >= totalInCategory && totalInCategory > 0) {
+                newBadges.push(badge);
+              }
+            } 
+            // Keep other badges if they still meet requirements
+            else if (badge.requirement === -1 || passport.stats.totalReviews >= badge.requirement) {
+              newBadges.push(badge);
+            }
+          }
+          
+          passport.badges = newBadges;
+          passport.updatedAt = new Date();
+          
+          await passport.save();
+          
+          console.log(`✅ Passport updated for user ${userId}:`, {
+            totalReviews: passport.stats.totalReviews,
+            rank: passport.rank,
+            badgesCount: passport.badges.length
+          });
+        }
+      }
+    }
+
     res.status(200).json({
       success: true,
-      message: 'Feedback deleted successfully'
+      message: 'Feedback deleted successfully and passport updated'
     });
   } catch (error) {
     console.error('Delete Feedback Error:', error);
-    res.status(500).json({ success: false, error: 'Server error' });
+    res.status(500).json({ 
+      success: false, 
+      error: 'Server error',
+      details: error.message 
+    });
   }
 });
 

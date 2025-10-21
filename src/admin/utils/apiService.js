@@ -1,0 +1,108 @@
+// apiService.js
+const API_URL = 'http://localhost:5001/api';
+
+export const api = {
+  // Dashboard
+  fetchDashboardData: async () => {
+    const res = await fetch(`${API_URL}/admin/dashboard`);
+    return await res.json();
+  },
+
+  // Users
+  fetchUsers: async () => {
+    const res = await fetch(`${API_URL}/admin/users`);
+    return await res.json();
+  },
+
+  createUser: async (userData) => {
+    const res = await fetch(`${API_URL}/admin/users`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(userData)
+    });
+    return await res.json();
+  },
+
+  updateUser: async (id, userData) => {
+    const res = await fetch(`${API_URL}/admin/users/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(userData)
+    });
+    return await res.json();
+  },
+
+  deleteUser: async (id) => {
+    const res = await fetch(`${API_URL}/admin/users/${id}`, { method: 'DELETE' });
+    return await res.json();
+  },
+
+  // Admins
+  fetchAdmins: async () => {
+    const res = await fetch(`${API_URL}/admin/all`);
+    return await res.json();
+  },
+
+  createAdmin: async (adminData) => {
+    const res = await fetch(`${API_URL}/admin/create`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(adminData)
+    });
+    return await res.json();
+  },
+
+  updateAdmin: async (id, adminData) => {
+    const res = await fetch(`${API_URL}/admin/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(adminData)
+    });
+    return await res.json();
+  },
+
+  deleteAdmin: async (id) => {
+    const res = await fetch(`${API_URL}/admin/${id}`, { method: 'DELETE' });
+    return await res.json();
+  },
+
+  // Feedback
+  fetchFeedback: async () => {
+    const res = await fetch(`${API_URL}/admin/feedback`);
+    return await res.json();
+  },
+
+  deleteFeedback: async (id) => {
+    const res = await fetch(`${API_URL}/admin/feedback/${id}`, { method: 'DELETE' });
+    return await res.json();
+  },
+
+  // Products
+  fetchProducts: async () => {
+    const res = await fetch(`${API_URL}/products`);
+    return await res.json();
+  },
+
+  createProduct: async (productData) => {
+    const res = await fetch(`${API_URL}/admin/products`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(productData)
+    });
+    return await res.json();
+  },
+
+  updateProduct: async (id, productData) => {
+    const res = await fetch(`${API_URL}/admin/products/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(productData)
+    });
+    return await res.json();
+  },
+
+  deleteProduct: async (id) => {
+    const res = await fetch(`${API_URL}/admin/products/${id}`, { method: 'DELETE' });
+    return await res.json();
+  }
+};
