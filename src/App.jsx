@@ -17,10 +17,11 @@ import Toast from './components/Toast';
 import './App.css';
 
 // Backend API URLs
-const AUTH_API_URL = 'http://localhost:5001/api/auth';
-const PRODUCTS_API_URL = 'http://localhost:5001/api/products';
-const FEEDBACK_API_URL = 'http://localhost:5001/api/feedback';
-const PASSPORT_API_URL = 'http://localhost:5001/api/passport';
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+const AUTH_API_URL = `${API_BASE}/api/auth`;
+const PRODUCTS_API_URL = `${API_BASE}/api/products`;
+const FEEDBACK_API_URL = `${API_BASE}/api/feedback`;
+const PASSPORT_API_URL = `${API_BASE}/api/passport`;
 
 function App() {
   const navigate = useNavigate();

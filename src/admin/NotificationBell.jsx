@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5001';
 
 function NotificationBell() {
   const [notifications, setNotifications] = useState([]);
@@ -13,7 +14,7 @@ function NotificationBell() {
 
   const fetchNotifications = async () => {
     try {
-      const res = await fetch('http://localhost:5001/api/notifications');
+      await fetch(`${API_BASE}/api/notifications/${id}/read`, { method: 'PUT' });
       const data = await res.json();
       if (data.success) {
         setNotifications(data.data);

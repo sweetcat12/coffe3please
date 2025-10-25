@@ -18,7 +18,7 @@
     Content-Type = "application/javascript; charset=utf-8"
 
 [[headers]]
-  for = "/*.css"
+  for = "/*.css"g
   [headers.values]
     Content-Type = "text/css; charset=utf-8"
 

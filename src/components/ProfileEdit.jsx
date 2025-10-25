@@ -23,8 +23,8 @@ const ProfileEdit = ({ currentUser, onClose, onUpdateSuccess }) => {
 
   const fetchUserData = async () => {
     try {
-      const response = await fetch(`http://localhost:5001/api/auth/user/${currentUser.id}`);
-      const result = await response.json();
+      const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+      const response = await fetch(`${API_BASE}/api/auth/user/${currentUser.id}`);
       if (result.success) {
         setFormData({
           username: result.user.username || '',
@@ -112,7 +112,7 @@ const ProfileEdit = ({ currentUser, onClose, onUpdateSuccess }) => {
         updateData.newPassword = formData.newPassword;
       }
 
-      const response = await fetch(`http://localhost:5001/api/auth/update-profile/${currentUser.id}`, {
+      const response = await fetch(`${API_BASE}/api/auth/update-profile/${currentUser.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updateData)
