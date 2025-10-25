@@ -1,16 +1,21 @@
-// apiService.js
+// src/admin/utils/apiService.jsx
 const API_URL = 'http://localhost:5001/api';
 
 export const api = {
-  // Dashboard
+  // ==================== DASHBOARD ====================
   fetchDashboardData: async () => {
     const res = await fetch(`${API_URL}/admin/dashboard`);
     return await res.json();
   },
 
-  // Users
+  // ==================== USERS ====================
   fetchUsers: async () => {
     const res = await fetch(`${API_URL}/admin/users`);
+    return await res.json();
+  },
+
+  fetchPendingUsers: async () => {
+    const res = await fetch(`${API_URL}/admin/users/pending`);
     return await res.json();
   },
 
@@ -33,11 +38,32 @@ export const api = {
   },
 
   deleteUser: async (id) => {
-    const res = await fetch(`${API_URL}/admin/users/${id}`, { method: 'DELETE' });
+    const res = await fetch(`${API_URL}/admin/users/${id}`, { 
+      method: 'DELETE' 
+    });
     return await res.json();
   },
 
-  // Admins
+  // ===== NEW: USER APPROVAL METHODS =====
+  approveUser: async (id, adminId) => {
+    const res = await fetch(`${API_URL}/admin/users/${id}/approve`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ adminId })
+    });
+    return await res.json();
+  },
+
+  rejectUser: async (id, adminId, reason) => {
+    const res = await fetch(`${API_URL}/admin/users/${id}/reject`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ adminId, reason })
+    });
+    return await res.json();
+  },
+
+  // ==================== ADMINS ====================
   fetchAdmins: async () => {
     const res = await fetch(`${API_URL}/admin/all`);
     return await res.json();
@@ -62,22 +88,26 @@ export const api = {
   },
 
   deleteAdmin: async (id) => {
-    const res = await fetch(`${API_URL}/admin/${id}`, { method: 'DELETE' });
+    const res = await fetch(`${API_URL}/admin/${id}`, { 
+      method: 'DELETE' 
+    });
     return await res.json();
   },
 
-  // Feedback
+  // ==================== FEEDBACK ====================
   fetchFeedback: async () => {
     const res = await fetch(`${API_URL}/admin/feedback`);
     return await res.json();
   },
 
   deleteFeedback: async (id) => {
-    const res = await fetch(`${API_URL}/admin/feedback/${id}`, { method: 'DELETE' });
+    const res = await fetch(`${API_URL}/admin/feedback/${id}`, { 
+      method: 'DELETE' 
+    });
     return await res.json();
   },
 
-  // Products
+  // ==================== PRODUCTS ====================
   fetchProducts: async () => {
     const res = await fetch(`${API_URL}/products`);
     return await res.json();
@@ -102,7 +132,9 @@ export const api = {
   },
 
   deleteProduct: async (id) => {
-    const res = await fetch(`${API_URL}/admin/products/${id}`, { method: 'DELETE' });
+    const res = await fetch(`${API_URL}/admin/products/${id}`, { 
+      method: 'DELETE' 
+    });
     return await res.json();
   }
 };

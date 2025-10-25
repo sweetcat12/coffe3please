@@ -127,12 +127,11 @@ const Header = ({ currentUser, onLoginClick, onSignupClick, onLogout, onEditProf
         </Link>
 
         <div style={{ 
-          display: 'flex', 
+          display: 'none',
           gap: '2rem', 
           alignItems: 'center',
           flex: 1,
-          justifyContent: 'center',
-          display: 'none'
+          justifyContent: 'center'
         }}
         className="desktop-nav"
         >
@@ -268,10 +267,9 @@ const Header = ({ currentUser, onLoginClick, onSignupClick, onLogout, onEditProf
         </div>
 
         <div style={{ 
-          display: 'flex', 
+          display: 'none',
           alignItems: 'center', 
-          gap: '1rem',
-          display: 'none'
+          gap: '1rem'
         }}
         className="desktop-auth"
         >

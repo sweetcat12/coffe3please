@@ -6,7 +6,110 @@ const Product = require('../models/Product');
 const Feedback = require('../models/Feedback');
 const bcrypt = require('bcryptjs');
 const Passport = require('../models/Passport');
-const { generateOTP, sendOTPEmail } = require('../emailService');
+
+// ===========================
+// EMAIL SERVICE
+// ===========================
+const sendApprovalEmail = async (email, name, status, reason = null) => {
+  const nodemailer = require('nodemailer');
+  
+  const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS
+    }
+  });
+
+  let subject, html;
+  
+  if (status === 'approved') {
+    subject = '✅ Your CoffeePlease Account Has Been Approved!';
+    html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #10B981;">🎉 Account Approved!</h2>
+        <p>Hi ${name},</p>
+        <p>Great news! Your CoffeePlease account has been approved.</p>
+        <p>You can now log in and start rating your favorite coffee items!</p>
+        <a href="http://localhost:5173" style="display: inline-block; padding: 12px 24px; background-color: #D97706; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0;">
+          Login Now
+        </a>
+        <p style="color: #6B7280; font-size: 14px;">Happy coffee tasting! ☕</p>
+      </div>
+    `;
+  } else {
+    subject = '❌ CoffeePlease Account Status Update';
+    html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #EF4444;">Account Not Approved</h2>
+        <p>Hi ${name},</p>
+        <p>We're sorry, but your CoffeePlease account registration was not approved.</p>
+        ${reason ? `<p><strong>Reason:</strong> ${reason}</p>` : ''}
+        <p>If you have questions, please contact our support team.</p>
+        <p style="color: #6B7280; font-size: 14px;">Thank you for your understanding.</p>
+      </div>
+    `;
+  }
+
+  try {
+    await transporter.sendMail({
+      from: `"CoffeePlease" <${process.env.EMAIL_USER}>`,
+      to: email,
+      subject: subject,
+      html: html
+    });
+    return { success: true };
+  } catch (error) {
+    console.error('Email send error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// ===========================
+// OTP EMAIL SERVICE
+// ===========================
+const generateOTP = () => {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+};
+
+const sendOTPEmail = async (email, otp, name, type = 'user') => {
+  const nodemailer = require('nodemailer');
+  
+  const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS
+    }
+  });
+
+  const subject = '🔐 Password Reset OTP - CoffeePlease';
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      <h2 style="color: #667eea;">Password Reset Request</h2>
+      <p>Hi ${name},</p>
+      <p>You requested to reset your password. Use the OTP below to continue:</p>
+      <div style="background-color: #F3F4F6; padding: 20px; border-radius: 8px; text-align: center; margin: 20px 0;">
+        <h1 style="color: #667eea; margin: 0; font-size: 36px; letter-spacing: 8px;">${otp}</h1>
+      </div>
+      <p style="color: #EF4444; font-weight: 600;">This OTP will expire in 15 minutes.</p>
+      <p style="color: #6B7280; font-size: 14px;">If you didn't request this, please ignore this email.</p>
+    </div>
+  `;
+
+  try {
+    await transporter.sendMail({
+      from: `"CoffeePlease" <${process.env.EMAIL_USER}>`,
+      to: email,
+      subject: subject,
+      html: html
+    });
+    return { success: true };
+  } catch (error) {
+    console.error('Email send error:', error);
+    return { success: false, error: error.message };
+  }
+};
 
 // ==================== ADMIN AUTH ====================
 
@@ -199,6 +302,8 @@ router.post('/reset-password', async (req, res) => {
     });
   }
 });
+
+// ==================== ADMIN MANAGEMENT ====================
 
 // @route   GET /api/admin/all
 router.get('/all', async (req, res) => {
@@ -447,6 +552,178 @@ router.post('/users', async (req, res) => {
   }
 });
 
+// ===========================
+// APPROVE USER ACCOUNT (with email notification)
+// ===========================
+router.post('/users/:id/approve', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { adminId } = req.body;
+
+    console.log('Approve user request:', id, 'by admin:', adminId);
+
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found'
+      });
+    }
+
+    if (user.accountStatus === 'approved') {
+      return res.status(400).json({
+        success: false,
+        error: 'User is already approved'
+      });
+    }
+
+    // Update user status
+    user.accountStatus = 'approved';
+    user.approvedBy = adminId;
+    user.approvedAt = new Date();
+    user.rejectionReason = null;
+    await user.save();
+
+    // Create passport for approved user
+    console.log('Creating passport for approved user...');
+    try {
+      const existingPassport = await Passport.findOne({ userId: user._id });
+      
+      if (!existingPassport) {
+        const passportData = {
+          userId: user._id,
+          reviewedProducts: [],
+          badges: [],
+          stats: {
+            totalReviews: 0,
+            currentStreak: 0,
+            longestStreak: 0,
+            lastReviewDate: null,
+            categoriesExplored: {}
+          },
+          rank: 'Newbie'
+        };
+        
+        await Passport.create(passportData);
+        console.log('✅ Passport created for approved user');
+      }
+    } catch (passportError) {
+      console.error('❌ Passport creation error:', passportError.message);
+    }
+
+    // 🆕 Send approval email
+    console.log('Sending approval email...');
+    const emailResult = await sendApprovalEmail(user.email, user.name, 'approved');
+    if (emailResult.success) {
+      console.log('✅ Approval email sent');
+    } else {
+      console.log('❌ Failed to send approval email:', emailResult.error);
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'User approved successfully',
+      data: {
+        id: user._id,
+        username: user.username,
+        name: user.name,
+        email: user.email,
+        accountStatus: user.accountStatus,
+        approvedAt: user.approvedAt
+      }
+    });
+  } catch (error) {
+    console.error('Approve User Error:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Server error',
+      details: error.message  
+    });
+  }
+});
+
+// ===========================
+// REJECT USER ACCOUNT (with email notification)
+// ===========================
+router.post('/users/:id/reject', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { adminId, reason } = req.body;
+
+    console.log('Reject user request:', id, 'by admin:', adminId);
+
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found'
+      });
+    }
+
+    if (user.accountStatus === 'rejected') {
+      return res.status(400).json({
+        success: false,
+        error: 'User is already rejected'
+      });
+    }
+
+    // Update user status
+    user.accountStatus = 'rejected';
+    user.approvedBy = adminId;
+    user.rejectionReason = reason || 'Your account registration did not meet our requirements.';
+    await user.save();
+
+    // 🆕 Send rejection email
+    console.log('Sending rejection email...');
+    const emailResult = await sendApprovalEmail(user.email, user.name, 'rejected', user.rejectionReason);
+    if (emailResult.success) {
+      console.log('✅ Rejection email sent');
+    } else {
+      console.log('❌ Failed to send rejection email:', emailResult.error);
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'User rejected successfully',
+      data: {
+        id: user._id,
+        username: user.username,
+        name: user.name,
+        email: user.email,
+        accountStatus: user.accountStatus,
+        rejectionReason: user.rejectionReason
+      }
+    });
+  } catch (error) {
+    console.error('Reject User Error:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Server error',
+      details: error.message  
+    });
+  }
+});
+
+// ===========================
+// GET PENDING USERS
+// ===========================
+router.get('/users/pending', async (req, res) => {
+  try {
+    const pendingUsers = await User.find({ accountStatus: 'pending' })
+      .select('-password')
+      .sort({ createdAt: -1 });
+    
+    res.status(200).json({
+      success: true,
+      count: pendingUsers.length,
+      data: pendingUsers
+    });
+  } catch (error) {
+    console.error('Get Pending Users Error:', error);
+    res.status(500).json({ success: false, error: 'Server error' });
+  }
+});
+
 // @route   PUT /api/admin/users/:id
 router.put('/users/:id', async (req, res) => {
   try {
@@ -477,7 +754,6 @@ router.put('/users/:id', async (req, res) => {
 });
 
 // @route   DELETE /api/admin/users/:id
-// @desc    Delete user and their associated data (passport, feedback)
 router.delete('/users/:id', async (req, res) => {
   try {
     console.log('Delete user request:', req.params.id);
@@ -535,12 +811,10 @@ router.get('/feedback', async (req, res) => {
 });
 
 // @route   DELETE /api/admin/feedback/:id
-// @desc    Delete feedback and update user's passport
 router.delete('/feedback/:id', async (req, res) => {
   try {
     console.log('Delete feedback request:', req.params.id);
     
-    // Find the feedback first to get userId and productId
     const feedback = await Feedback.findById(req.params.id);
     if (!feedback) {
       return res.status(404).json({
@@ -559,7 +833,6 @@ router.delete('/feedback/:id', async (req, res) => {
       const passport = await Passport.findOne({ userId });
       
       if (passport) {
-        // Find the reviewed product
         const productIndex = passport.reviewedProducts.findIndex(
           item => item.productId.toString() === productId.toString()
         );
@@ -574,14 +847,12 @@ router.delete('/feedback/:id', async (req, res) => {
           // Decrease total reviews
           passport.stats.totalReviews = Math.max(0, passport.stats.totalReviews - 1);
 
-          // ✅ FIX: Handle categoriesExplored as a plain object, not a Map
+          // Handle categoriesExplored
           if (category && passport.stats.categoriesExplored) {
-            // Convert to plain object if it's a Map
             if (passport.stats.categoriesExplored instanceof Map) {
               passport.stats.categoriesExplored = Object.fromEntries(passport.stats.categoriesExplored);
             }
 
-            // Decrease category count
             const currentCount = passport.stats.categoriesExplored[category] || 0;
             if (currentCount > 1) {
               passport.stats.categoriesExplored[category] = currentCount - 1;
@@ -596,20 +867,15 @@ router.delete('/feedback/:id', async (req, res) => {
           // Remove badges that no longer meet requirements
           const newBadges = [];
           for (const badge of passport.badges) {
-            // Keep category master badges only if still valid
             if (badge.name.includes('Master')) {
               const badgeCategory = badge.name.replace(' Master', '');
-              
-              // Use object notation instead of Map methods
               const reviewedInCategory = passport.stats.categoriesExplored[badgeCategory] || 0;
               const totalInCategory = await Product.countDocuments({ category: badgeCategory });
               
               if (reviewedInCategory >= totalInCategory && totalInCategory > 0) {
                 newBadges.push(badge);
               }
-            } 
-            // Keep other badges if they still meet requirements
-            else if (badge.requirement === -1 || passport.stats.totalReviews >= badge.requirement) {
+            } else if (badge.requirement === -1 || passport.stats.totalReviews >= badge.requirement) {
               newBadges.push(badge);
             }
           }
@@ -617,19 +883,13 @@ router.delete('/feedback/:id', async (req, res) => {
           passport.badges = newBadges;
           passport.updatedAt = new Date();
           
-          // Mark the paths as modified to ensure MongoDB saves the changes
           passport.markModified('stats.categoriesExplored');
           passport.markModified('reviewedProducts');
           passport.markModified('badges');
           
           await passport.save();
           
-          console.log(`✅ Passport updated for user ${userId}:`, {
-            totalReviews: passport.stats.totalReviews,
-            rank: passport.rank,
-            badgesCount: passport.badges.length,
-            categoriesExplored: passport.stats.categoriesExplored
-          });
+          console.log(`✅ Passport updated for user ${userId}`);
         }
       }
     }

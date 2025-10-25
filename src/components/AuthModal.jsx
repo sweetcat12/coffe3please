@@ -1,3 +1,4 @@
+// src/components/AuthModal.jsx
 import { useState, useEffect } from 'react';
 
 const AuthModal = ({ mode, closeModal, onLogin, onSignup, switchMode, onForgotPassword }) => {
@@ -10,9 +11,13 @@ const AuthModal = ({ mode, closeModal, onLogin, onSignup, switchMode, onForgotPa
     confirmPassword: ''
   });
   const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState(''); // NEW: For signup success
 
   useEffect(() => {
     console.log('AuthModal mounted with mode:', mode);
+    // Clear messages when mode changes
+    setError('');
+    setSuccessMessage('');
   }, [mode]);
 
   const handleChange = (e) => {
@@ -21,11 +26,13 @@ const AuthModal = ({ mode, closeModal, onLogin, onSignup, switchMode, onForgotPa
       [e.target.name]: e.target.value
     });
     setError('');
+    setSuccessMessage('');
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setSuccessMessage('');
 
     if (mode === 'login') {
       if (!formData.email || !formData.password) {
@@ -33,11 +40,12 @@ const AuthModal = ({ mode, closeModal, onLogin, onSignup, switchMode, onForgotPa
         return;
       }
 
-      const result = onLogin(formData.email, formData.password);
+      const result = await onLogin(formData.email, formData.password);
       if (!result.success) {
         setError(result.error);
       }
     } else {
+      // Signup validation
       if (!formData.username || !formData.name || !formData.email || !formData.phone || !formData.password || !formData.confirmPassword) {
         setError('Please fill in all fields');
         return;
@@ -74,8 +82,19 @@ const AuthModal = ({ mode, closeModal, onLogin, onSignup, switchMode, onForgotPa
         return;
       }
 
-      const result = onSignup(formData.email, formData.password, formData.name, formData.phone, formData.username);
-      if (!result.success) {
+      const result = await onSignup(formData.email, formData.password, formData.name, formData.phone, formData.username);
+      if (result.success) {
+        // NEW: Show success message and clear form
+        setSuccessMessage('Account created successfully! Please wait for admin approval before logging in.');
+        setFormData({
+          username: '',
+          name: '',
+          email: '',
+          phone: '',
+          password: '',
+          confirmPassword: ''
+        });
+      } else {
         setError(result.error);
       }
     }
@@ -165,6 +184,22 @@ const AuthModal = ({ mode, closeModal, onLogin, onSignup, switchMode, onForgotPa
           </p>
         </div>
 
+        {/* Success Message */}
+        {successMessage && (
+          <div style={{
+            marginBottom: '1rem',
+            padding: '0.75rem',
+            backgroundColor: '#D1FAE5',
+            border: '1px solid #6EE7B7',
+            color: '#065F46',
+            borderRadius: '0.5rem',
+            fontSize: '0.875rem'
+          }}>
+            ✓ {successMessage}
+          </div>
+        )}
+
+        {/* Error Message */}
         {error && (
           <div style={{
             marginBottom: '1rem',

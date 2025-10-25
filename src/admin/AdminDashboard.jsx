@@ -56,7 +56,6 @@ function AdminDashboard({ admin, onLogout, showToast }) {
       const data = await api.fetchDashboardData();
       if (data.success) {
         setDashboardData(data.data);
-        // Fetch AI recommendations after dashboard data loads
         fetchRecommendations(data.data);
       }
     } catch (error) {
@@ -64,6 +63,10 @@ function AdminDashboard({ admin, onLogout, showToast }) {
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchSignupRequests = async () => {
+    // Removed - using user approval system instead
   };
 
   const fetchRecommendations = async (dashboardDataToUse) => {
@@ -126,7 +129,55 @@ function AdminDashboard({ admin, onLogout, showToast }) {
     }
   };
 
-  // User operations
+  // ===== NEW: USER APPROVAL HANDLERS =====
+  const handleApproveUser = async (userId, adminId) => {
+    try {
+      console.log('Approving user:', userId, 'by admin:', adminId);
+      const data = await api.approveUser(userId, adminId);
+      
+      if (data.success) {
+        showToast('User approved successfully! They can now log in.', 'success');
+        fetchUsers(); // Refresh user list
+      } else {
+        showToast(data.error || 'Failed to approve user', 'error');
+      }
+    } catch (error) {
+      console.error('Error approving user:', error);
+      showToast('Error approving user', 'error');
+    }
+  };
+
+  const handleRejectUser = async (userId, reason) => {
+    try {
+      console.log('Rejecting user:', userId, 'Reason:', reason);
+      const data = await api.rejectUser(userId, admin.id, reason);
+      
+      if (data.success) {
+        showToast('User rejected successfully', 'success');
+        fetchUsers(); // Refresh user list
+      } else {
+        showToast(data.error || 'Failed to reject user', 'error');
+      }
+    } catch (error) {
+      console.error('Error rejecting user:', error);
+      showToast('Error rejecting user', 'error');
+    }
+  };
+
+  // Signup Requests Handlers (removed - using user approval system)
+  const handleApproveSignup = async (requestId, adminId) => {
+    // Not needed - approval handled in UsersTab
+  };
+
+  const handleRejectSignup = async (requestId, reason) => {
+    // Not needed - rejection handled in UsersTab
+  };
+
+  const handleDeleteSignup = async (requestId) => {
+    // Not needed - deletion handled in UsersTab
+  };
+
+  // User CRUD operations
   const handleUserSubmit = async (e) => {
     e.preventDefault();
     try {
@@ -154,7 +205,7 @@ function AdminDashboard({ admin, onLogout, showToast }) {
   };
 
   const deleteUser = async (id) => {
-    if (!window.confirm('Delete this user?')) return;
+    if (!window.confirm('Delete this user? This will also delete their passport and feedback.')) return;
     try {
       const data = await api.deleteUser(id);
       if (data.success) {
@@ -280,18 +331,37 @@ function AdminDashboard({ admin, onLogout, showToast }) {
     );
   }
 
+  // Calculate pending users count for sidebar badge
+  const pendingUsersCount = users.filter(u => u.accountStatus === 'pending').length;
+
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: '#F9FAFB' }}>
-      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} admin={admin} onLogout={onLogout} />
+      {/* Fixed Sidebar */}
+      <div style={{ position: 'fixed', left: 0, top: 0, zIndex: 100 }}>
+        <Sidebar 
+          activeTab={activeTab} 
+          setActiveTab={setActiveTab} 
+          admin={admin} 
+          onLogout={onLogout}
+          pendingUsersCount={pendingUsersCount}
+        />
+      </div>
 
-      <div style={{ flex: 1, padding: '2.5rem', overflowY: 'auto' }}>
+      {/* Main Content with Left Margin */}
+      <div style={{ 
+        marginLeft: '280px', 
+        flex: 1, 
+        padding: '1.5rem 2rem', 
+        overflowY: 'auto',
+        minHeight: '100vh'
+      }}>
         {activeTab === 'dashboard' && dashboardData && (
           <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-              <h1 style={{ fontSize: '2.5rem', fontWeight: 'bold' }}>Dashboard</h1>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
+              <h1 style={{ fontSize: '2rem', fontWeight: 'bold' }}>Dashboard</h1>
               <NotificationBell />
             </div>
-            <p style={{ color: '#6B7280', marginBottom: '2rem' }}>Real-time analytics and insights</p>
+            <p style={{ color: '#6B7280', marginBottom: '1.5rem' }}>Real-time analytics and insights</p>
             
             <StatsCards dashboardData={dashboardData} />
             {loadingRecommendations ? (
@@ -344,6 +414,9 @@ function AdminDashboard({ admin, onLogout, showToast }) {
               setShowUserModal(true);
             }}
             onDeleteUser={deleteUser}
+            onApproveUser={handleApproveUser} // NEW: Pass approval handler
+            onRejectUser={handleRejectUser}   // NEW: Pass rejection handler
+            adminId={admin?.id}               // NEW: Pass admin ID
           />
         )}
 

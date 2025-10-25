@@ -1,12 +1,13 @@
+// backend/routes/authRoutes.js
 const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 const Notification = require('../models/Notification');
 const Passport = require('../models/Passport');
-const { generateOTP, sendOTPEmail } = require('../emailService');
+
 
 // ===========================
-// SIGNUP ROUTE
+// SIGNUP ROUTE - NOW CREATES PENDING ACCOUNTS
 // ===========================
 router.post('/signup', async (req, res) => {
   try {
@@ -55,69 +56,45 @@ router.post('/signup', async (req, res) => {
       });
     }
 
-    // Create new user
-    console.log('Creating new user...');
+    // Create new user with PENDING status
+    console.log('Creating new user with pending status...');
     const user = await User.create({
       username,
       name,
       email,
       phone,
-      password
+      password,
+      accountStatus: 'pending' // NEW: Set to pending by default
     });
 
-    console.log('✅ User created successfully:', user._id);
+    console.log('✅ User created successfully with pending status:', user._id);
 
-    // Auto-create passport for new user
-    console.log('Creating passport...');
-    try {
-      const passportData = {
-        userId: user._id,
-        reviewedProducts: [],
-        badges: [],
-        stats: {
-          totalReviews: 0,
-          currentStreak: 0,
-          longestStreak: 0,
-          lastReviewDate: null,
-          categoriesExplored: {}
-        },
-        rank: 'Newbie'
-      };
-      console.log('Passport data:', JSON.stringify(passportData, null, 2));
-
-      const passport = await Passport.create(passportData);
-      console.log('✅ Passport created successfully:', passport._id);
-    } catch (passportError) {
-      console.error('❌ Passport creation error:', passportError.message);
-      console.error('Passport error details:', passportError);
-      // Don't throw - continue even if passport fails
-    }
-
-    // Create notification for new user
-    console.log('Creating notification...');
+    // Create notification for admins about new signup
+    console.log('Creating notification for admins...');
     try {
       await Notification.create({
         type: 'user',
-        title: 'New User Registered',
-        message: `${name} (${email}) has just created an account.`,
+        title: 'New User Registration Pending',
+        message: `${name} (${email}) has signed up and is waiting for approval.`,
         relatedId: user._id,
         relatedModel: 'User'
       });
-      console.log('✅ Notification created successfully');
+      console.log('✅ Admin notification created successfully');
     } catch (notificationError) {
       console.error('❌ Notification creation error:', notificationError.message);
       // Don't throw - continue even if notification fails
     }
 
-    console.log('=== SIGNUP SUCCESS ===');
+    console.log('=== SIGNUP SUCCESS (PENDING APPROVAL) ===');
     res.status(201).json({
       success: true,
-      message: 'Account created successfully',
+      message: 'Account created successfully! Please wait for admin approval before logging in.',
       user: {
         id: user._id,
         name: user.name,
         email: user.email,
-        username: user.username
+        username: user.username,
+        accountStatus: 'pending'
       }
     });
   } catch (error) {
@@ -129,7 +106,6 @@ router.post('/signup', async (req, res) => {
     console.error('Stack:', error.stack);
 
     let errorMessage = 'Server error. Please try again later.';
-    let errorDetails = {};
 
     // Handle specific MongoDB errors
     if (error.code === 11000) {
@@ -152,7 +128,7 @@ router.post('/signup', async (req, res) => {
 });
 
 // ===========================
-// LOGIN ROUTE
+// LOGIN ROUTE - CHECK APPROVAL STATUS
 // ===========================
 router.post('/login', async (req, res) => {
   try {
@@ -173,6 +149,23 @@ router.post('/login', async (req, res) => {
       });
     }
 
+    // NEW: Check if account is approved
+    if (user.accountStatus === 'pending') {
+      return res.status(403).json({
+        success: false,
+        error: 'Your account is pending admin approval. Please wait for confirmation.',
+        accountStatus: 'pending'
+      });
+    }
+
+    if (user.accountStatus === 'rejected') {
+      return res.status(403).json({
+        success: false,
+        error: user.rejectionReason || 'Your account has been rejected. Please contact support.',
+        accountStatus: 'rejected'
+      });
+    }
+
     const isPasswordCorrect = await user.comparePassword(password);
     if (!isPasswordCorrect) {
       return res.status(401).json({
@@ -188,7 +181,8 @@ router.post('/login', async (req, res) => {
         id: user._id,
         name: user.name,
         email: user.email,
-        username: user.username
+        username: user.username,
+        accountStatus: user.accountStatus
       }
     });
   } catch (error) {
@@ -390,6 +384,7 @@ router.get('/user/:userId', async (req, res) => {
         name: user.name,
         email: user.email,
         phone: user.phone,
+        accountStatus: user.accountStatus,
         createdAt: user.createdAt
       }
     });

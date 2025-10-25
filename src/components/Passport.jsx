@@ -9,21 +9,21 @@ const Passport = ({ currentUser }) => {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
   const [reviewedProductsDetails, setReviewedProductsDetails] = useState([]);
-  const [newBadges, setNewBadges] = useState([]);
-  const [showBadgeModal, setShowBadgeModal] = useState(false);
+  const [copiedCode, setCopiedCode] = useState(null);
 
   useEffect(() => {
     if (currentUser) {
-      fetchPassportData();
-      fetchLeaderboard();
+      fetchAllData();
     }
   }, [currentUser]);
 
-  useEffect(() => {
-    if (passportData) {
-      checkForNewBadges();
-    }
-  }, [passportData]);
+  const fetchAllData = async () => {
+    await Promise.all([
+      fetchPassportData(),
+      fetchLeaderboard()
+    ]);
+    setLoading(false);
+  };
 
   const fetchPassportData = async () => {
     try {
@@ -35,8 +35,6 @@ const Passport = ({ currentUser }) => {
       }
     } catch (error) {
       console.error('Error fetching passport:', error);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -46,45 +44,21 @@ const Passport = ({ currentUser }) => {
       const result = await response.json();
       
       if (result.success) {
-        let allProducts = [];
-        if (Array.isArray(result.data)) {
-          allProducts = result.data;
-        } else {
-          Object.values(result.data).forEach(categoryProducts => {
-            allProducts = [...allProducts, ...categoryProducts];
-          });
-        }
+        const allProducts = Array.isArray(result.data) 
+          ? result.data 
+          : Object.values(result.data).flat();
 
         const productDetails = reviewedProducts.map(reviewedItem => {
           const product = allProducts.find(p => 
-            p._id?.toString() === reviewedItem.productId?.toString() || 
-            p.id?.toString() === reviewedItem.productId?.toString()
+            (p._id || p.id)?.toString() === reviewedItem.productId?.toString()
           );
-          return product ? {
-            ...product,
-            reviewedAt: reviewedItem.reviewedAt,
-            category: reviewedItem.category
-          } : null;
+          return product ? { ...product, reviewedAt: reviewedItem.reviewedAt, category: reviewedItem.category } : null;
         }).filter(Boolean);
 
         setReviewedProductsDetails(productDetails);
       }
     } catch (error) {
       console.error('Error fetching reviewed products:', error);
-    }
-  };
-
-  const checkForNewBadges = () => {
-    const storedBadges = JSON.parse(localStorage.getItem(`seenBadges_${currentUser.id}`) || '[]');
-    const currentBadgeNames = passportData.passport.badges.map(b => b.name);
-    const unseenBadges = passportData.passport.badges.filter(badge => 
-      !storedBadges.includes(badge.name)
-    );
-
-    if (unseenBadges.length > 0) {
-      setNewBadges(unseenBadges);
-      setShowBadgeModal(true);
-      localStorage.setItem(`seenBadges_${currentUser.id}`, JSON.stringify(currentBadgeNames));
     }
   };
 
@@ -98,6 +72,12 @@ const Passport = ({ currentUser }) => {
     } catch (error) {
       console.error('Error fetching leaderboard:', error);
     }
+  };
+
+  const copyVoucherCode = (code) => {
+    navigator.clipboard.writeText(code);
+    setCopiedCode(code);
+    setTimeout(() => setCopiedCode(null), 2000);
   };
 
   const getRankColor = (rank) => {
@@ -164,121 +144,15 @@ const Passport = ({ currentUser }) => {
 
   const { passport, categoryProgress, totalProducts, completionPercentage } = passportData;
 
-  const groupedProducts = reviewedProductsDetails.reduce((acc, product) => {
-    const category = product.category || 'Other';
-    if (!acc[category]) {
-      acc[category] = [];
-    }
-    acc[category].push(product);
-    return acc;
-  }, {});
-
   return (
     <div style={{
       minHeight: '80vh',
       padding: '3rem 2rem',
       backgroundColor: '#FFF7ED'
     }}>
-      {/* Badge Unlock Modal */}
-      {showBadgeModal && newBadges.length > 0 && (
-        <div
-          onClick={() => setShowBadgeModal(false)}
-          style={{
-            position: 'fixed',
-            inset: 0,
-            backgroundColor: 'rgba(0,0,0,0.7)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 9999,
-            padding: '2rem'
-          }}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              backgroundColor: 'white',
-              borderRadius: '1.5rem',
-              padding: '3rem',
-              maxWidth: '500px',
-              textAlign: 'center',
-              boxShadow: '0 25px 50px rgba(0,0,0,0.3)',
-              animation: 'scaleIn 0.3s ease-out'
-            }}
-          >
-            <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>🎉</div>
-            <h2 style={{
-              fontSize: '2rem',
-              fontWeight: 'bold',
-              color: '#1F2937',
-              marginBottom: '1rem'
-            }}>
-              New Badge{newBadges.length > 1 ? 's' : ''} Unlocked!
-            </h2>
-            <div style={{
-              display: 'grid',
-              gap: '1.5rem',
-              marginBottom: '2rem'
-            }}>
-              {newBadges.map((badge, index) => (
-                <div
-                  key={index}
-                  style={{
-                    backgroundColor: '#FFF7ED',
-                    borderRadius: '1rem',
-                    padding: '1.5rem',
-                    border: '3px solid #F59E0B'
-                  }}
-                >
-                  <div style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>
-                    {badge.icon}
-                  </div>
-                  <div style={{
-                    fontWeight: 'bold',
-                    fontSize: '1.25rem',
-                    color: '#1F2937',
-                    marginBottom: '0.5rem'
-                  }}>
-                    {badge.name}
-                  </div>
-                  <div style={{
-                    fontSize: '0.875rem',
-                    color: '#6B7280'
-                  }}>
-                    {badge.description}
-                  </div>
-                </div>
-              ))}
-            </div>
-            <button
-              onClick={() => setShowBadgeModal(false)}
-              style={{
-                padding: '0.875rem 2rem',
-                backgroundColor: '#D97706',
-                color: 'white',
-                border: 'none',
-                borderRadius: '0.75rem',
-                cursor: 'pointer',
-                fontSize: '1rem',
-                fontWeight: '600',
-                transition: 'all 0.2s'
-              }}
-            >
-              Awesome!
-            </button>
-          </div>
-        </div>
-      )}
-
-      <div style={{
-        maxWidth: '1200px',
-        margin: '0 auto'
-      }}>
+      <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
         {/* Header */}
-        <div style={{
-          textAlign: 'center',
-          marginBottom: '3rem'
-        }}>
+        <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
           <h1 style={{
             fontSize: '3rem',
             fontWeight: 'bold',
@@ -287,10 +161,7 @@ const Passport = ({ currentUser }) => {
           }}>
             ☕ Coffee Passport
           </h1>
-          <p style={{
-            fontSize: '1.2rem',
-            color: '#92400E'
-          }}>
+          <p style={{ fontSize: '1.2rem', color: '#92400E' }}>
             Track your coffee journey and unlock achievements!
           </p>
         </div>
@@ -352,7 +223,6 @@ const Passport = ({ currentUser }) => {
                   }}>
                     {currentUser.name}
                   </h2>
-
                   <div style={{
                     display: 'inline-flex',
                     alignItems: 'center',
@@ -369,46 +239,24 @@ const Passport = ({ currentUser }) => {
                   </div>
                 </div>
 
-                <div style={{
-                  display: 'flex',
-                  gap: '2rem',
-                  textAlign: 'center'
-                }}>
+                <div style={{ display: 'flex', gap: '2rem', textAlign: 'center' }}>
                   <div>
-                    <div style={{
-                      fontSize: '2.5rem',
-                      fontWeight: 'bold',
-                      color: '#D97706'
-                    }}>
+                    <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: '#D97706' }}>
                       {passport.stats.totalReviews}
                     </div>
-                    <div style={{ color: '#6B7280', fontSize: '0.9rem' }}>
-                      Reviews
-                    </div>
+                    <div style={{ color: '#6B7280', fontSize: '0.9rem' }}>Reviews</div>
                   </div>
                   <div>
-                    <div style={{
-                      fontSize: '2.5rem',
-                      fontWeight: 'bold',
-                      color: '#D97706'
-                    }}>
+                    <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: '#D97706' }}>
                       {passport.badges.length}
                     </div>
-                    <div style={{ color: '#6B7280', fontSize: '0.9rem' }}>
-                      Badges
-                    </div>
+                    <div style={{ color: '#6B7280', fontSize: '0.9rem' }}>Badges</div>
                   </div>
                   <div>
-                    <div style={{
-                      fontSize: '2.5rem',
-                      fontWeight: 'bold',
-                      color: '#D97706'
-                    }}>
+                    <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: '#D97706' }}>
                       {passport.stats.currentStreak}
                     </div>
-                    <div style={{ color: '#6B7280', fontSize: '0.9rem' }}>
-                      Day Streak 🔥
-                    </div>
+                    <div style={{ color: '#6B7280', fontSize: '0.9rem' }}>Day Streak 🔥</div>
                   </div>
                 </div>
               </div>
@@ -446,7 +294,7 @@ const Passport = ({ currentUser }) => {
                     fontSize: '0.75rem',
                     fontWeight: 'bold'
                   }}>
-                    {completionPercentage > 10 && `${passport.stats.totalReviews}/${totalProducts}`}
+                    {completionPercentage > 10 && `${reviewedProductsDetails.length}/${totalProducts}`}
                   </div>
                 </div>
               </div>
@@ -494,10 +342,7 @@ const Passport = ({ currentUser }) => {
                       }}>
                         {category}
                       </div>
-                      <div style={{
-                        fontSize: '0.9rem',
-                        color: '#6B7280'
-                      }}>
+                      <div style={{ fontSize: '0.9rem', color: '#6B7280' }}>
                         {progress.reviewed} / {progress.total} items
                       </div>
                     </div>
@@ -528,110 +373,6 @@ const Passport = ({ currentUser }) => {
                 </div>
               ))}
             </div>
-
-            {/* Products You've Tried */}
-            <h3 style={{
-              fontSize: '1.5rem',
-              fontWeight: 'bold',
-              color: '#1F2937',
-              marginBottom: '1rem'
-            }}>
-              Products You've Tried ({reviewedProductsDetails.length})
-            </h3>
-            {Object.keys(groupedProducts).length > 0 ? (
-              <div style={{ display: 'grid', gap: '2rem' }}>
-                {Object.entries(groupedProducts).map(([category, products]) => (
-                  <div key={category}>
-                    <h4 style={{
-                      fontSize: '1.25rem',
-                      fontWeight: '600',
-                      color: '#6F4E37',
-                      marginBottom: '1rem',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.5rem'
-                    }}>
-                      {getCategoryIcon(category)} {category}
-                    </h4>
-                    <div style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))',
-                      gap: '1rem'
-                    }}>
-                      {products.map((product, index) => (
-                        <div
-                          key={index}
-                          style={{
-                            backgroundColor: 'white',
-                            borderRadius: '0.75rem',
-                            padding: '1rem',
-                            boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                            border: '2px solid #FED7AA'
-                          }}
-                        >
-                          {product.imageUrl && (
-                            <img
-                              src={product.imageUrl}
-                              alt={product.name}
-                              style={{
-                                width: '100%',
-                                height: '150px',
-                                objectFit: 'cover',
-                                borderRadius: '0.5rem',
-                                marginBottom: '0.75rem'
-                              }}
-                            />
-                          )}
-                          <h5 style={{
-                            fontWeight: 'bold',
-                            color: '#1F2937',
-                            fontSize: '1rem',
-                            marginBottom: '0.5rem'
-                          }}>
-                            {product.name}
-                          </h5>
-                          <p style={{
-                            fontSize: '0.875rem',
-                            color: '#6B7280',
-                            marginBottom: '0.5rem'
-                          }}>
-                            {product.description}
-                          </p>
-                          <div style={{
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                            fontSize: '0.75rem',
-                            color: '#9CA3AF'
-                          }}>
-                            <span>₱{product.price}</span>
-                            <span>
-                              {new Date(product.reviewedAt).toLocaleDateString()}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div style={{
-                backgroundColor: 'white',
-                borderRadius: '0.75rem',
-                padding: '3rem',
-                textAlign: 'center',
-                boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-              }}>
-                <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>☕</div>
-                <p style={{ color: '#6B7280', fontSize: '1.1rem' }}>
-                  You haven't reviewed any products yet.
-                </p>
-                <p style={{ color: '#9CA3AF', fontSize: '0.9rem', marginTop: '0.5rem' }}>
-                  Start reviewing to unlock badges and track your journey!
-                </p>
-              </div>
-            )}
           </div>
         )}
 
@@ -649,7 +390,7 @@ const Passport = ({ currentUser }) => {
             {passport.badges.length > 0 ? (
               <div style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
                 gap: '1.5rem'
               }}>
                 {passport.badges.map((badge, index) => (
@@ -661,7 +402,7 @@ const Passport = ({ currentUser }) => {
                       padding: '1.5rem',
                       boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
                       textAlign: 'center',
-                      border: '2px solid #FCD34D'
+                      border: badge.discount > 0 ? '3px solid #FCD34D' : '2px solid #E5E7EB'
                     }}
                   >
                     <div style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>
@@ -670,20 +411,88 @@ const Passport = ({ currentUser }) => {
                     <div style={{
                       fontWeight: 'bold',
                       color: '#1F2937',
-                      marginBottom: '0.25rem'
+                      fontSize: '1.125rem',
+                      marginBottom: '0.5rem'
                     }}>
                       {badge.name}
                     </div>
                     <div style={{
                       fontSize: '0.875rem',
-                      color: '#6B7280'
+                      color: '#6B7280',
+                      marginBottom: '1rem'
                     }}>
                       {badge.description}
                     </div>
+
+                    {/* Voucher Code Section */}
+                    {badge.voucherCode && badge.discount > 0 && (
+                      <div style={{
+                        backgroundColor: '#FEF3C7',
+                        borderRadius: '0.5rem',
+                        padding: '1rem',
+                        marginBottom: '0.75rem',
+                        border: '2px dashed #D97706'
+                      }}>
+                        <div style={{
+                          fontSize: '0.75rem',
+                          color: '#92400E',
+                          marginBottom: '0.5rem',
+                          fontWeight: '600',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.05em'
+                        }}>
+                          🎟️ {badge.discount}% Discount Code
+                        </div>
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.5rem',
+                          justifyContent: 'center'
+                        }}>
+                          <code style={{
+                            backgroundColor: 'white',
+                            padding: '0.5rem 0.75rem',
+                            borderRadius: '0.375rem',
+                            fontSize: '1rem',
+                            fontWeight: 'bold',
+                            color: '#92400E',
+                            fontFamily: 'monospace',
+                            letterSpacing: '0.05em'
+                          }}>
+                            {badge.voucherCode}
+                          </code>
+                          <button
+                            onClick={() => copyVoucherCode(badge.voucherCode)}
+                            style={{
+                              padding: '0.5rem 0.75rem',
+                              backgroundColor: copiedCode === badge.voucherCode ? '#10B981' : '#D97706',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '0.375rem',
+                              cursor: 'pointer',
+                              fontSize: '0.875rem',
+                              fontWeight: '600',
+                              transition: 'all 0.2s',
+                              minWidth: '70px'
+                            }}
+                          >
+                            {copiedCode === badge.voucherCode ? '✓' : 'Copy'}
+                          </button>
+                        </div>
+                        <div style={{
+                          fontSize: '0.7rem',
+                          color: '#78350F',
+                          marginTop: '0.5rem',
+                          fontStyle: 'italic'
+                        }}>
+                          Valid for 90 days
+                        </div>
+                      </div>
+                    )}
+
                     <div style={{
                       fontSize: '0.75rem',
-                      color: '#92400E',
-                      marginTop: '0.5rem'
+                      color: '#9CA3AF'
                     }}>
                       Unlocked: {new Date(badge.unlockedAt).toLocaleDateString()}
                     </div>
@@ -703,14 +512,16 @@ const Passport = ({ currentUser }) => {
                   No badges unlocked yet.
                 </p>
                 <p style={{ color: '#9CA3AF', fontSize: '0.9rem', marginTop: '0.5rem' }}>
-                  Keep reviewing products to earn badges!
+                  Keep reviewing products to earn badges and unlock discount vouchers!<br/>
+                  <strong style={{ color: '#D97706' }}>5 reviews = 5% off • 10 reviews = 10% off<br/>
+                  20 reviews = 20% off • 30 reviews = 30% off</strong>
                 </p>
               </div>
             )}
           </div>
         )}
 
-        {/* Leaderboard Tab - ✅ UPDATED */}
+        {/* Leaderboard Tab */}
         {activeTab === 'leaderboard' && (
           <div>
             <h3 style={{
@@ -765,17 +576,12 @@ const Passport = ({ currentUser }) => {
                           </span>
                         )}
                       </div>
-                      <div style={{
-                        fontSize: '0.875rem',
-                        color: '#6B7280'
-                      }}>
+                      <div style={{ fontSize: '0.875rem', color: '#6B7280' }}>
                         {getRankIcon(entry.currentRank)} {entry.currentRank}
                       </div>
                     </div>
                   </div>
-                  <div style={{
-                    textAlign: 'right'
-                  }}>
+                  <div style={{ textAlign: 'right' }}>
                     <div style={{
                       fontSize: '1.5rem',
                       fontWeight: 'bold',
@@ -783,10 +589,7 @@ const Passport = ({ currentUser }) => {
                     }}>
                       {entry.totalReviews}
                     </div>
-                    <div style={{
-                      fontSize: '0.75rem',
-                      color: '#6B7280'
-                    }}>
+                    <div style={{ fontSize: '0.75rem', color: '#6B7280' }}>
                       reviews
                     </div>
                   </div>
@@ -796,21 +599,6 @@ const Passport = ({ currentUser }) => {
           </div>
         )}
       </div>
-
-      <style>
-        {`
-          @keyframes scaleIn {
-            from {
-              transform: scale(0.8);
-              opacity: 0;
-            }
-            to {
-              transform: scale(1);
-              opacity: 1;
-            }
-          }
-        `}
-      </style>
     </div>
   );
 };

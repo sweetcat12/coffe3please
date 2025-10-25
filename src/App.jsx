@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import Header from './components/Header';
 import Hero from './components/Hero';
 import About from './components/About';
@@ -23,6 +23,7 @@ const FEEDBACK_API_URL = 'http://localhost:5001/api/feedback';
 const PASSPORT_API_URL = 'http://localhost:5001/api/passport';
 
 function App() {
+  const navigate = useNavigate();
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
@@ -131,6 +132,7 @@ function App() {
     setAuthMode('login');
   };
 
+  // ===== FIXED: LOGIN HANDLER WITH APPROVAL CHECK =====
   const handleLogin = async (email, password) => {
     try {
       const response = await fetch(`${AUTH_API_URL}/login`, {
@@ -140,9 +142,30 @@ function App() {
       });
 
       const data = await response.json();
+      
       if (!response.ok || !data.success) {
-        showToast(data.error || 'Invalid credentials.', 'error');
-        return { success: false };
+        // Check for pending/rejected status
+        if (data.accountStatus === 'pending') {
+          return { 
+            success: false, 
+            error: 'Your account is pending admin approval. Please wait for confirmation.' 
+          };
+        }
+        if (data.accountStatus === 'rejected') {
+          return { 
+            success: false, 
+            error: data.error || 'Your account has been rejected. Please contact support.' 
+          };
+        }
+        return { success: false, error: data.error || 'Invalid credentials.' };
+      }
+
+      // Double-check status even if response is OK
+      if (data.user && data.user.accountStatus === 'pending') {
+        return { 
+          success: false, 
+          error: 'Your account is pending admin approval. Please wait for confirmation.' 
+        };
       }
 
       const userSession = {
@@ -159,11 +182,11 @@ function App() {
 
     } catch (error) {
       console.error('Login error:', error);
-      showToast('Network error. Please try again.', 'error');
-      return { success: false };
+      return { success: false, error: 'Network error. Please try again.' };
     }
   };
 
+  // ===== FIXED: SIGNUP HANDLER - DON'T AUTO-LOGIN PENDING USERS =====
   const handleSignup = async (email, password, name, phone, username) => {
     try {
       const response = await fetch(`${AUTH_API_URL}/signup`, {
@@ -173,11 +196,21 @@ function App() {
       });
 
       const data = await response.json();
+      
       if (!response.ok || !data.success) {
-        showToast(data.error || 'Signup failed. Please try again.', 'error');
-        return { success: false };
+        return { success: false, error: data.error || 'Signup failed. Please try again.' };
       }
 
+      // ✅ Check if account is pending - DON'T log them in!
+      if (data.user && data.user.accountStatus === 'pending') {
+        // Keep modal open, show success message
+        return { 
+          success: true, 
+          message: data.message || 'Account created successfully! Please wait for admin approval before logging in.'
+        };
+      }
+
+      // If somehow approved immediately (shouldn't happen with new system)
       const userSession = {
         id: data.user.id,
         email: data.user.email,
@@ -187,13 +220,12 @@ function App() {
       localStorage.setItem('currentUser', JSON.stringify(userSession));
       setCurrentUser(userSession);
       closeAuthModal();
-      showToast(`Account created! Welcome, ${data.user.name}! 🎉 Your Coffee Passport is ready!`, 'success');
+      showToast(`Account created! Welcome, ${data.user.name}! 🎉`, 'success');
       return { success: true };
 
     } catch (error) {
       console.error('Signup error:', error);
-      showToast('Network error. Please try again.', 'error');
-      return { success: false };
+      return { success: false, error: 'Network error. Please try again.' };
     }
   };
 
@@ -201,6 +233,7 @@ function App() {
     const userName = currentUser?.name || 'User';
     setCurrentUser(null);
     localStorage.removeItem('currentUser');
+    navigate('/');
     showToast(`Goodbye, ${userName}!`, 'info');
   };
 
@@ -228,7 +261,7 @@ function App() {
       const result = await response.json();
       
       if (result.success) {
-        // ✅ FIX: Check for new badges directly from feedback response
+        // Check for new badges directly from feedback response
         if (result.newBadges && result.newBadges.length > 0) {
           setNewBadges(result.newBadges);
           setShowBadgeModal(true);
@@ -261,9 +294,6 @@ function App() {
       showToast('Error submitting review. Please try again.', 'error');
     }
   };
-
-  // ✅ REMOVED: updatePassport function - no longer needed!
-  // The feedback POST route already handles passport updates
 
   const getAverageRating = (productId) => {
     const productRatings = ratings[productId];

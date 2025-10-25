@@ -23,7 +23,7 @@ const ProfileEdit = ({ currentUser, onClose, onUpdateSuccess }) => {
 
   const fetchUserData = async () => {
     try {
-      const response = await fetch(`http://localhost:5000/api/auth/user/${currentUser.id}`);
+      const response = await fetch(`http://localhost:5001/api/auth/user/${currentUser.id}`);
       const result = await response.json();
       if (result.success) {
         setFormData({
@@ -112,7 +112,7 @@ const ProfileEdit = ({ currentUser, onClose, onUpdateSuccess }) => {
         updateData.newPassword = formData.newPassword;
       }
 
-      const response = await fetch(`http://localhost:5000/api/auth/update-profile/${currentUser.id}`, {
+      const response = await fetch(`http://localhost:5001/api/auth/update-profile/${currentUser.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updateData)

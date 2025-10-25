@@ -1,8 +1,18 @@
+import { useState } from 'react';
+
 const BadgeUnlockedModal = ({ badges, closeModal }) => {
+  const [copiedCode, setCopiedCode] = useState(null);
+
   const handleOverlayClick = (e) => {
     if (e.target === e.currentTarget) {
       closeModal();
     }
+  };
+
+  const copyVoucherCode = (code) => {
+    navigator.clipboard.writeText(code);
+    setCopiedCode(code);
+    setTimeout(() => setCopiedCode(null), 2000);
   };
 
   return (
@@ -84,7 +94,9 @@ const BadgeUnlockedModal = ({ badges, closeModal }) => {
           textAlign: 'center',
           boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
           animation: 'scaleIn 0.5s ease-out',
-          position: 'relative'
+          position: 'relative',
+          maxHeight: '90vh',
+          overflowY: 'auto'
         }}
       >
         <div style={{
@@ -123,8 +135,8 @@ const BadgeUnlockedModal = ({ badges, closeModal }) => {
             <div
               key={index}
               style={{
-                backgroundColor: '#FEF3C7',
-                border: '2px solid #FCD34D',
+                backgroundColor: badge.discount > 0 ? '#FEF3C7' : '#F3F4F6',
+                border: badge.discount > 0 ? '2px solid #FCD34D' : '2px solid #D1D5DB',
                 borderRadius: '0.75rem',
                 padding: '1.5rem',
                 animation: `scaleIn 0.5s ease-out ${index * 0.2}s both`
@@ -139,17 +151,82 @@ const BadgeUnlockedModal = ({ badges, closeModal }) => {
               <div style={{
                 fontSize: '1.25rem',
                 fontWeight: 'bold',
-                color: '#92400E',
+                color: badge.discount > 0 ? '#92400E' : '#1F2937',
                 marginBottom: '0.25rem'
               }}>
                 {badge.name}
               </div>
               <div style={{
                 fontSize: '0.9rem',
-                color: '#78350F'
+                color: badge.discount > 0 ? '#78350F' : '#6B7280',
+                marginBottom: badge.voucherCode ? '1rem' : '0'
               }}>
                 {badge.description}
               </div>
+
+              {/* Voucher Code Section */}
+              {badge.voucherCode && badge.discount > 0 && (
+                <div style={{
+                  backgroundColor: 'white',
+                  borderRadius: '0.5rem',
+                  padding: '1rem',
+                  border: '2px dashed #D97706'
+                }}>
+                  <div style={{
+                    fontSize: '0.75rem',
+                    color: '#92400E',
+                    marginBottom: '0.5rem',
+                    fontWeight: '600',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em'
+                  }}>
+                    🎟️ Your {badge.discount}% Discount Code
+                  </div>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    justifyContent: 'center'
+                  }}>
+                    <code style={{
+                      backgroundColor: '#FEF3C7',
+                      padding: '0.5rem 1rem',
+                      borderRadius: '0.375rem',
+                      fontSize: '1.1rem',
+                      fontWeight: 'bold',
+                      color: '#92400E',
+                      fontFamily: 'monospace',
+                      letterSpacing: '0.05em'
+                    }}>
+                      {badge.voucherCode}
+                    </code>
+                    <button
+                      onClick={() => copyVoucherCode(badge.voucherCode)}
+                      style={{
+                        padding: '0.5rem 0.75rem',
+                        backgroundColor: copiedCode === badge.voucherCode ? '#10B981' : '#D97706',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '0.375rem',
+                        cursor: 'pointer',
+                        fontSize: '0.875rem',
+                        fontWeight: '600',
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      {copiedCode === badge.voucherCode ? '✓ Copied!' : 'Copy'}
+                    </button>
+                  </div>
+                  <div style={{
+                    fontSize: '0.75rem',
+                    color: '#92400E',
+                    marginTop: '0.5rem',
+                    fontStyle: 'italic'
+                  }}>
+                    Valid for 90 days • Check your passport for all vouchers
+                  </div>
+                </div>
+              )}
             </div>
           ))}
         </div>

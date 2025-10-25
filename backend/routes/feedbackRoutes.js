@@ -4,10 +4,16 @@ const Feedback = require('../models/Feedback');
 const Notification = require('../models/Notification');
 const Product = require('../models/Product');
 const Passport = require('../models/Passport');
+const User = require('../models/User');
+
+// Helper function to generate unique voucher code
+const generateVoucherCode = (discount) => {
+  const randomStr = Math.random().toString(36).substring(2, 8).toUpperCase();
+  return `COFFEE${discount}-${randomStr}`;
+};
 
 // @route   POST /api/feedback
 // @desc    Submit product feedback/rating
-// @access  Public (should be protected - require login)
 router.post('/', async (req, res) => {
   try {
     const { productId, userId, rating, comment, customerName, customerEmail, image } = req.body;
@@ -31,7 +37,6 @@ router.post('/', async (req, res) => {
 
     // Validate image if provided
     if (image) {
-      // Check if it's a valid base64 image
       const base64Regex = /^data:image\/(jpeg|jpg);base64,/;
       if (!base64Regex.test(image)) {
         return res.status(400).json({
@@ -40,7 +45,6 @@ router.post('/', async (req, res) => {
         });
       }
 
-      // Check image size (5MB limit)
       const sizeInBytes = (image.length * 3) / 4;
       const sizeInMB = sizeInBytes / (1024 * 1024);
       if (sizeInMB > 5) {
@@ -50,8 +54,6 @@ router.post('/', async (req, res) => {
         });
       }
     }
-
-    console.log('Validation passed, creating feedback...');
 
     // Create feedback
     const feedback = await Feedback.create({
@@ -66,16 +68,11 @@ router.post('/', async (req, res) => {
 
     console.log('Feedback created:', feedback._id);
 
-    // Get product details for notification and passport update
-    console.log('Fetching product with ID:', productId);
+    // Get product details
     const product = await Product.findById(productId);
-    console.log('Product found:', product ? product.name : 'NOT FOUND');
-
     const productName = product ? product.name : 'Unknown Product';
     const userName = customerName || 'Anonymous';
     const stars = '⭐'.repeat(rating);
-
-    console.log('Creating notification...');
 
     // Create notification for admin
     await Notification.create({
@@ -109,21 +106,21 @@ router.post('/', async (req, res) => {
           });
         }
 
-        // Check if product already reviewed
+        // ✅ FIX: Always increment totalReviews (count all reviews, not just unique products)
+        passport.stats.totalReviews += 1;
+
+        // Check if this specific product was reviewed before (for category tracking)
         const alreadyReviewed = passport.reviewedProducts.some(
           item => item.productId.toString() === productId.toString()
         );
 
         if (!alreadyReviewed) {
-          // Add to reviewed products
+          // Add to reviewed products list (unique products)
           passport.reviewedProducts.push({
             productId,
             category: product ? product.category : 'Uncategorized',
             reviewedAt: new Date()
           });
-
-          // Update total reviews
-          passport.stats.totalReviews += 1;
 
           // Update category count
           if (product && product.category) {
@@ -133,27 +130,33 @@ router.post('/', async (req, res) => {
             passport.stats.categoriesExplored[product.category] = 
               (passport.stats.categoriesExplored[product.category] || 0) + 1;
           }
+        }
 
-          // Update streak
-          passport.updateStreak();
+        // Update streak
+        passport.updateStreak();
 
-          // Recalculate rank
-          passport.rank = passport.calculateRank();
+        // Recalculate rank
+        passport.rank = passport.calculateRank();
 
-          // Check and unlock badges
-          const newBadges = passport.checkBadges();
+        // Check and unlock badges (with vouchers)
+        const newBadges = await passport.checkBadges(userId);
 
-          // Save passport
-          await passport.save();
+        // Save passport
+        await passport.save();
 
-          // If new badges were unlocked, include them in the response
-          if (newBadges && newBadges.length > 0) {
-            return res.status(201).json({
-              success: true,
-              data: feedback,
-              newBadges: newBadges
-            });
-          }
+        console.log('✅ Passport updated:', {
+          totalReviews: passport.stats.totalReviews,
+          uniqueProducts: passport.reviewedProducts.length,
+          rank: passport.rank
+        });
+
+        // If new badges were unlocked, include them in the response
+        if (newBadges && newBadges.length > 0) {
+          return res.status(201).json({
+            success: true,
+            data: feedback,
+            newBadges: newBadges
+          });
         }
       } catch (passportError) {
         console.error('Error updating passport:', passportError);
@@ -166,7 +169,6 @@ router.post('/', async (req, res) => {
     });
   } catch (error) {
     console.error('Submit Feedback Error:', error.message);
-    console.error('Full error:', error);
     res.status(500).json({
       success: false,
       error: 'Server error. Please try again later.'
@@ -175,20 +177,17 @@ router.post('/', async (req, res) => {
 });
 
 // @route   GET /api/feedback/product/:productId
-// @desc    Get all feedback for a specific product (sorted by highest rating first)
-// @access  Public
+// @desc    Get all feedback for a specific product
 router.get('/product/:productId', async (req, res) => {
   try {
     const feedback = await Feedback.find({ productId: req.params.productId })
-      .populate('userId', 'name email') // Get user info if userId exists
-      .sort({ rating: -1, createdAt: -1 }); // Highest rating first, then most recent
+      .populate('userId', 'name email')
+      .sort({ rating: -1, createdAt: -1 });
 
-    // Calculate average rating
     const averageRating = feedback.length > 0
       ? (feedback.reduce((sum, f) => sum + f.rating, 0) / feedback.length).toFixed(1)
       : 0;
 
-    // Format the response to include username from either userId or customerName
     const formattedFeedback = feedback.map(item => ({
       _id: item._id,
       username: item.userId?.name || item.customerName || 'Anonymous',
@@ -213,92 +212,8 @@ router.get('/product/:productId', async (req, res) => {
   }
 });
 
-// @route   PUT /api/feedback/:id/verify
-// @desc    Verify a feedback (voucher functionality removed)
-// @access  Admin only
-router.put('/:id/verify', async (req, res) => {
-  try {
-    const { adminId } = req.body;
-    
-    const feedback = await Feedback.findById(req.params.id);
-    
-    if (!feedback) {
-      return res.status(404).json({
-        success: false,
-        error: 'Feedback not found'
-      });
-    }
-
-    if (feedback.isVerified) {
-      return res.status(400).json({
-        success: false,
-        error: 'Feedback already verified'
-      });
-    }
-
-    // Mark as verified
-    feedback.isVerified = true;
-    feedback.verifiedAt = new Date();
-    feedback.verifiedBy = adminId || null;
-    await feedback.save();
-
-    res.json({
-      success: true,
-      message: 'Feedback verified',
-      data: feedback
-    });
-  } catch (error) {
-    console.error('Error verifying feedback:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Server error. Please try again later.'
-    });
-  }
-});
-
-// @route   PUT /api/feedback/:id/unverify
-// @desc    Unverify a feedback
-// @access  Admin only
-router.put('/:id/unverify', async (req, res) => {
-  try {
-    const feedback = await Feedback.findById(req.params.id);
-    
-    if (!feedback) {
-      return res.status(404).json({
-        success: false,
-        error: 'Feedback not found'
-      });
-    }
-
-    if (!feedback.isVerified) {
-      return res.status(400).json({
-        success: false,
-        error: 'Feedback is not verified'
-      });
-    }
-
-    feedback.isVerified = false;
-    feedback.verifiedAt = null;
-    feedback.verifiedBy = null;
-    await feedback.save();
-
-    res.json({
-      success: true,
-      message: 'Feedback unverified',
-      data: feedback
-    });
-  } catch (error) {
-    console.error('Error unverifying feedback:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Server error. Please try again later.'
-    });
-  }
-});
-
 // @route   GET /api/feedback/product/:productId/summary
-// @desc    Get review summary for a product (count and average)
-// @access  Public
+// @desc    Get review summary for a product
 router.get('/product/:productId/summary', async (req, res) => {
   try {
     const feedbacks = await Feedback.find({ productId: req.params.productId });
@@ -311,7 +226,7 @@ router.get('/product/:productId/summary', async (req, res) => {
     res.json({
       success: true,
       totalReviews,
-      averageRating: Math.round(averageRating * 10) / 10 // Round to 1 decimal
+      averageRating: Math.round(averageRating * 10) / 10
     });
   } catch (error) {
     console.error('Error fetching review summary:', error);
@@ -324,7 +239,6 @@ router.get('/product/:productId/summary', async (req, res) => {
 
 // @route   GET /api/feedback
 // @desc    Get all feedback
-// @access  Public
 router.get('/', async (req, res) => {
   try {
     const feedback = await Feedback.find().sort({ createdAt: -1 });
@@ -345,10 +259,8 @@ router.get('/', async (req, res) => {
 
 // @route   DELETE /api/feedback/:id
 // @desc    Delete feedback and update passport
-// @access  Public (should be protected)
 router.delete('/:id', async (req, res) => {
   try {
-    // Find the feedback first to get userId and productId
     const feedback = await Feedback.findById(req.params.id);
 
     if (!feedback) {
@@ -368,6 +280,9 @@ router.delete('/:id', async (req, res) => {
       const passport = await Passport.findOne({ userId });
       
       if (passport) {
+        // ✅ FIX: Always decrease totalReviews (counts all reviews)
+        passport.stats.totalReviews = Math.max(0, passport.stats.totalReviews - 1);
+
         // Find the reviewed product
         const productIndex = passport.reviewedProducts.findIndex(
           item => item.productId.toString() === productId.toString()
@@ -380,17 +295,12 @@ router.delete('/:id', async (req, res) => {
           // Remove from reviewed products
           passport.reviewedProducts.splice(productIndex, 1);
 
-          // Decrease total reviews
-          passport.stats.totalReviews = Math.max(0, passport.stats.totalReviews - 1);
-
-          // ✅ FIX: Handle categoriesExplored as a plain object, not a Map
+          // Handle categoriesExplored
           if (category && passport.stats.categoriesExplored) {
-            // Convert to plain object if it's a Map
             if (passport.stats.categoriesExplored instanceof Map) {
               passport.stats.categoriesExplored = Object.fromEntries(passport.stats.categoriesExplored);
             }
 
-            // Decrease category count
             const currentCount = passport.stats.categoriesExplored[category] || 0;
             if (currentCount > 1) {
               passport.stats.categoriesExplored[category] = currentCount - 1;
@@ -398,23 +308,20 @@ router.delete('/:id', async (req, res) => {
               delete passport.stats.categoriesExplored[category];
             }
           }
-
-          // Recalculate rank
-          passport.rank = passport.calculateRank();
-          
-          // Mark the path as modified to ensure MongoDB saves the changes
-          passport.markModified('stats.categoriesExplored');
-          passport.markModified('reviewedProducts');
-          
-          // Save the updated passport
-          await passport.save();
-
-          console.log(`✅ Passport updated for user ${userId}:`, {
-            totalReviews: passport.stats.totalReviews,
-            rank: passport.rank,
-            categoriesExplored: passport.stats.categoriesExplored
-          });
         }
+
+        // Recalculate rank
+        passport.rank = passport.calculateRank();
+        
+        passport.markModified('stats.categoriesExplored');
+        passport.markModified('reviewedProducts');
+        
+        await passport.save();
+
+        console.log(`✅ Passport updated after deletion:`, {
+          totalReviews: passport.stats.totalReviews,
+          rank: passport.rank
+        });
       }
     }
 

@@ -1,39 +1,6 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
-const voucherSchema = new mongoose.Schema({
-  code: {
-    type: String,
-    required: false,
-    sparse: true, // ✅ CHANGED: Allow null values without unique constraint conflict
-    unique: true
-  },
-  discount: {
-    type: Number,
-    required: false
-  },
-  badgeName: {
-    type: String,
-    required: false
-  },
-  isUsed: {
-    type: Boolean,
-    default: false
-  },
-  expiresAt: {
-    type: Date,
-    required: false
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now
-  },
-  usedAt: {
-    type: Date,
-    default: null
-  }
-});
-
 const userSchema = new mongoose.Schema({
   username: {
     type: String,
@@ -60,7 +27,12 @@ const userSchema = new mongoose.Schema({
   phone: {
     type: String,
     required: [true, 'Please provide your phone number'],
-    match: [/^(09|\+639)\d{9}$/, 'Please provide a valid Philippine phone number (e.g., 09171234567)']
+    validate: {
+      validator: function(v) {
+        return /^\d{10,13}$/.test(v);
+      },
+      message: 'Phone number must be 10-13 digits'
+    }
   },
   password: {
     type: String,
@@ -68,6 +40,26 @@ const userSchema = new mongoose.Schema({
     minlength: 6,
     select: false
   },
+  // ===== USER APPROVAL SYSTEM =====
+  accountStatus: {
+    type: String,
+    enum: ['pending', 'approved', 'rejected'],
+    default: 'pending'
+  },
+  approvedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Admin',
+    default: null
+  },
+  approvedAt: {
+    type: Date,
+    default: null
+  },
+  rejectionReason: {
+    type: String,
+    default: null
+  },
+  // ===== PASSWORD RESET =====
   resetPasswordOTP: {
     type: String,
     select: false
@@ -76,10 +68,7 @@ const userSchema = new mongoose.Schema({
     type: Date,
     select: false
   },
-  vouchers: {
-    type: [voucherSchema],
-    default: []
-  },
+  // ===== TIMESTAMPS =====
   createdAt: {
     type: Date,
     default: Date.now
@@ -101,15 +90,9 @@ userSchema.pre('save', async function(next) {
   next();
 });
 
-// Method to compare password for login
+// Compare password for login
 userSchema.methods.comparePassword = async function(candidatePassword) {
   return await bcrypt.compare(candidatePassword, this.password);
-};
-
-// Method to generate voucher code
-userSchema.methods.generateVoucherCode = function() {
-  const randomStr = Math.random().toString(36).substring(2, 8).toUpperCase();
-  return `COFFEE${randomStr}`;
 };
 
 const User = mongoose.model('User', userSchema);
