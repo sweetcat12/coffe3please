@@ -3,12 +3,22 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
-  base: '/CoffeePlease/',   // 👈 very important for GitHub Pages
+  base: '/',
   build: {
+    outDir: 'dist',
     rollupOptions: {
       input: {
         main: './index.html',
         admin: './admin.html'
+      }
+    }
+  },
+  server: {
+    port: 5173,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:10000',
+        changeOrigin: true
       }
     }
   }
