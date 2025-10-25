@@ -13,12 +13,7 @@
     "node": ">=18.0.0",
     "npm": ">=9.0.0"
   },
-  "keywords": [
-    "coffee",
-    "api",
-    "express",
-    "mongodb"
-  ],
+  "keywords": ["coffee", "api", "express", "mongodb"],
   "author": "",
   "license": "ISC",
   "dependencies": {
