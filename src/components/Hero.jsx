@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react';
 import { TrendingUp, Award, Star, Crown, Users, ThumbsUp, Trophy } from 'lucide-react';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';  // ✅ Has /api
-const PRODUCTS_API_URL = `${API_BASE}/products`;
-const FEEDBACK_API_URL = `${API_BASE}/feedback`;
-
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+const PRODUCTS_API_URL = `${API_BASE}/api/products`;
+const FEEDBACK_API_URL = `${API_BASE}/api/feedback`;
 function Hero({ currentUser }) {
   const [bestSellers, setBestSellers] = useState([]);
   const [topRated, setTopRated] = useState([]);
