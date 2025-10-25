@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import '../App.css';
 
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
+
 function AdminLogin({ onLoginSuccess, showToast, onForgotPassword }) {
   const [formData, setFormData] = useState({
     email: '',
@@ -20,7 +22,7 @@ function AdminLogin({ onLoginSuccess, showToast, onForgotPassword }) {
     setLoading(true);
 
     try {
-      const response = await fetch('http://localhost:5001/api/admin/login', {
+      const response = await fetch(`${API_BASE}/admin/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -149,7 +151,7 @@ function AdminLogin({ onLoginSuccess, showToast, onForgotPassword }) {
           </button>
         </form>
 
-        {/* Forgot Password Link - Below Sign In button */}
+        {/* Forgot Password Link */}
         <div style={{ marginTop: '1rem', textAlign: 'center' }}>
           <button
             type="button"

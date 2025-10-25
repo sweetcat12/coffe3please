@@ -1,5 +1,7 @@
 import { useState } from 'react';
 
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
+
 function AdminForgotPassword({ onBack, showToast }) {
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
@@ -28,7 +30,7 @@ function AdminForgotPassword({ onBack, showToast }) {
     }
 
     try {
-      const response = await fetch('http://localhost:5001/api/admin/forgot-password', {
+      const response = await fetch(`${API_BASE}/admin/forgot-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: formData.email })
@@ -61,7 +63,7 @@ function AdminForgotPassword({ onBack, showToast }) {
     }
 
     try {
-      const response = await fetch('http://localhost:5001/api/admin/verify-otp', {
+      const response = await fetch(`${API_BASE}/admin/verify-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -109,7 +111,7 @@ function AdminForgotPassword({ onBack, showToast }) {
     }
 
     try {
-      const response = await fetch('http://localhost:5001/api/admin/reset-password', {
+      const response = await fetch(`${API_BASE}/admin/reset-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

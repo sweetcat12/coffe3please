@@ -1,7 +1,9 @@
 import { useState } from 'react';
 
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
+
 const ForgotPasswordModal = ({ closeModal, onSuccess }) => {
-  const [step, setStep] = useState(1); // 1: Email, 2: OTP, 3: New Password
+  const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
     email: '',
     otp: '',
@@ -31,7 +33,7 @@ const ForgotPasswordModal = ({ closeModal, onSuccess }) => {
     }
 
     try {
-      const response = await fetch('http://localhost:5001/api/auth/forgot-password', {
+      const response = await fetch(`${API_BASE}/auth/forgot-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: formData.email })
@@ -64,7 +66,7 @@ const ForgotPasswordModal = ({ closeModal, onSuccess }) => {
     }
 
     try {
-      const response = await fetch('http://localhost:5001/api/auth/verify-otp', {
+      const response = await fetch(`${API_BASE}/auth/verify-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -112,7 +114,7 @@ const ForgotPasswordModal = ({ closeModal, onSuccess }) => {
     }
 
     try {
-      const response = await fetch('http://localhost:5001/api/auth/reset-password', {
+      const response = await fetch(`${API_BASE}/auth/reset-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -171,7 +173,6 @@ const ForgotPasswordModal = ({ closeModal, onSuccess }) => {
           position: 'relative'
         }}
       >
-        {/* Close Button */}
         <button
           onClick={closeModal}
           type="button"
@@ -205,7 +206,6 @@ const ForgotPasswordModal = ({ closeModal, onSuccess }) => {
           ×
         </button>
 
-        {/* Header */}
         <div style={{ marginBottom: '1.5rem' }}>
           <h2 style={{ 
             fontSize: '1.875rem', 
@@ -222,7 +222,6 @@ const ForgotPasswordModal = ({ closeModal, onSuccess }) => {
           </p>
         </div>
 
-        {/* Progress Indicator */}
         <div style={{ 
           display: 'flex', 
           justifyContent: 'space-between', 
@@ -243,7 +242,6 @@ const ForgotPasswordModal = ({ closeModal, onSuccess }) => {
           ))}
         </div>
 
-        {/* Error Message */}
         {error && (
           <div style={{
             marginBottom: '1rem',
@@ -258,7 +256,6 @@ const ForgotPasswordModal = ({ closeModal, onSuccess }) => {
           </div>
         )}
 
-        {/* Step 1: Email */}
         {step === 1 && (
           <form onSubmit={handleSendOTP} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <div>
@@ -310,7 +307,6 @@ const ForgotPasswordModal = ({ closeModal, onSuccess }) => {
           </form>
         )}
 
-        {/* Step 2: OTP */}
         {step === 2 && (
           <form onSubmit={handleVerifyOTP} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <div>
@@ -411,7 +407,6 @@ const ForgotPasswordModal = ({ closeModal, onSuccess }) => {
           </form>
         )}
 
-        {/* Step 3: New Password */}
         {step === 3 && (
           <form onSubmit={handleResetPassword} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <div>
@@ -491,7 +486,6 @@ const ForgotPasswordModal = ({ closeModal, onSuccess }) => {
           </form>
         )}
 
-        {/* Back to Login */}
         <div style={{ marginTop: '1.5rem', textAlign: 'center' }}>
           <button
             type="button"

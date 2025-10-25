@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 
-const PASSPORT_API_URL = 'http://localhost:5001/api/passport';
-const PRODUCTS_API_URL = 'http://localhost:5001/api/products';
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
+const PASSPORT_API_URL = `${API_BASE}/passport`;
+const PRODUCTS_API_URL = `${API_BASE}/products`;
 
 const Passport = ({ currentUser }) => {
   const [passportData, setPassportData] = useState(null);
@@ -151,7 +152,6 @@ const Passport = ({ currentUser }) => {
       backgroundColor: '#FFF7ED'
     }}>
       <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-        {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
           <h1 style={{
             fontSize: '3rem',
@@ -166,7 +166,6 @@ const Passport = ({ currentUser }) => {
           </p>
         </div>
 
-        {/* Tabs */}
         <div style={{
           display: 'flex',
           justifyContent: 'center',
@@ -196,10 +195,8 @@ const Passport = ({ currentUser }) => {
           ))}
         </div>
 
-        {/* Overview Tab */}
         {activeTab === 'overview' && (
           <div>
-            {/* Profile Card */}
             <div style={{
               backgroundColor: 'white',
               borderRadius: '1rem',
@@ -261,7 +258,6 @@ const Passport = ({ currentUser }) => {
                 </div>
               </div>
 
-              {/* Overall Progress */}
               <div style={{ marginTop: '2rem' }}>
                 <div style={{
                   display: 'flex',
@@ -300,7 +296,6 @@ const Passport = ({ currentUser }) => {
               </div>
             </div>
 
-            {/* Category Progress */}
             <h3 style={{
               fontSize: '1.5rem',
               fontWeight: 'bold',
@@ -376,7 +371,6 @@ const Passport = ({ currentUser }) => {
           </div>
         )}
 
-        {/* Badges Tab */}
         {activeTab === 'badges' && (
           <div>
             <h3 style={{
@@ -424,7 +418,6 @@ const Passport = ({ currentUser }) => {
                       {badge.description}
                     </div>
 
-                    {/* Voucher Code Section */}
                     {badge.voucherCode && badge.discount > 0 && (
                       <div style={{
                         backgroundColor: '#FEF3C7',
@@ -521,7 +514,6 @@ const Passport = ({ currentUser }) => {
           </div>
         )}
 
-        {/* Leaderboard Tab */}
         {activeTab === 'leaderboard' && (
           <div>
             <h3 style={{

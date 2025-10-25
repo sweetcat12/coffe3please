@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import MenuItem from './MenuItem';
 
-const PRODUCTS_API_URL = 'http://localhost:5001/api/products';
-const FEEDBACK_API_URL = 'http://localhost:5001/api/feedback';
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
+const PRODUCTS_API_URL = `${API_BASE}/products`;
+const FEEDBACK_API_URL = `${API_BASE}/feedback`;
 
 function Menu({ openRatingModal }) {
   const [menuItems, setMenuItems] = useState({});

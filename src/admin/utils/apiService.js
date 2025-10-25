@@ -1,26 +1,26 @@
 // src/admin/utils/apiService.jsx
-const API_URL = 'http://localhost:5001/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
 
 export const api = {
   // ==================== DASHBOARD ====================
   fetchDashboardData: async () => {
-    const res = await fetch(`${API_URL}/admin/dashboard`);
+    const res = await fetch(`${API_BASE_URL}/admin/dashboard`);
     return await res.json();
   },
 
   // ==================== USERS ====================
   fetchUsers: async () => {
-    const res = await fetch(`${API_URL}/admin/users`);
+    const res = await fetch(`${API_BASE_URL}/admin/users`);
     return await res.json();
   },
 
   fetchPendingUsers: async () => {
-    const res = await fetch(`${API_URL}/admin/users/pending`);
+    const res = await fetch(`${API_BASE_URL}/admin/users/pending`);
     return await res.json();
   },
 
   createUser: async (userData) => {
-    const res = await fetch(`${API_URL}/admin/users`, {
+    const res = await fetch(`${API_BASE_URL}/admin/users`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(userData)
@@ -29,7 +29,7 @@ export const api = {
   },
 
   updateUser: async (id, userData) => {
-    const res = await fetch(`${API_URL}/admin/users/${id}`, {
+    const res = await fetch(`${API_BASE_URL}/admin/users/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(userData)
@@ -38,15 +38,15 @@ export const api = {
   },
 
   deleteUser: async (id) => {
-    const res = await fetch(`${API_URL}/admin/users/${id}`, { 
+    const res = await fetch(`${API_BASE_URL}/admin/users/${id}`, { 
       method: 'DELETE' 
     });
     return await res.json();
   },
 
-  // ===== NEW: USER APPROVAL METHODS =====
+  // ===== USER APPROVAL METHODS =====
   approveUser: async (id, adminId) => {
-    const res = await fetch(`${API_URL}/admin/users/${id}/approve`, {
+    const res = await fetch(`${API_BASE_URL}/admin/users/${id}/approve`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ adminId })
@@ -55,7 +55,7 @@ export const api = {
   },
 
   rejectUser: async (id, adminId, reason) => {
-    const res = await fetch(`${API_URL}/admin/users/${id}/reject`, {
+    const res = await fetch(`${API_BASE_URL}/admin/users/${id}/reject`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ adminId, reason })
@@ -65,12 +65,12 @@ export const api = {
 
   // ==================== ADMINS ====================
   fetchAdmins: async () => {
-    const res = await fetch(`${API_URL}/admin/all`);
+    const res = await fetch(`${API_BASE_URL}/admin/all`);
     return await res.json();
   },
 
   createAdmin: async (adminData) => {
-    const res = await fetch(`${API_URL}/admin/create`, {
+    const res = await fetch(`${API_BASE_URL}/admin/create`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(adminData)
@@ -79,7 +79,7 @@ export const api = {
   },
 
   updateAdmin: async (id, adminData) => {
-    const res = await fetch(`${API_URL}/admin/${id}`, {
+    const res = await fetch(`${API_BASE_URL}/admin/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(adminData)
@@ -88,7 +88,7 @@ export const api = {
   },
 
   deleteAdmin: async (id) => {
-    const res = await fetch(`${API_URL}/admin/${id}`, { 
+    const res = await fetch(`${API_BASE_URL}/admin/${id}`, { 
       method: 'DELETE' 
     });
     return await res.json();
@@ -96,12 +96,12 @@ export const api = {
 
   // ==================== FEEDBACK ====================
   fetchFeedback: async () => {
-    const res = await fetch(`${API_URL}/admin/feedback`);
+    const res = await fetch(`${API_BASE_URL}/admin/feedback`);
     return await res.json();
   },
 
   deleteFeedback: async (id) => {
-    const res = await fetch(`${API_URL}/admin/feedback/${id}`, { 
+    const res = await fetch(`${API_BASE_URL}/admin/feedback/${id}`, { 
       method: 'DELETE' 
     });
     return await res.json();
@@ -109,12 +109,12 @@ export const api = {
 
   // ==================== PRODUCTS ====================
   fetchProducts: async () => {
-    const res = await fetch(`${API_URL}/products`);
+    const res = await fetch(`${API_BASE_URL}/products`);
     return await res.json();
   },
 
   createProduct: async (productData) => {
-    const res = await fetch(`${API_URL}/admin/products`, {
+    const res = await fetch(`${API_BASE_URL}/admin/products`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(productData)
@@ -123,7 +123,7 @@ export const api = {
   },
 
   updateProduct: async (id, productData) => {
-    const res = await fetch(`${API_URL}/admin/products/${id}`, {
+    const res = await fetch(`${API_BASE_URL}/admin/products/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(productData)
@@ -132,7 +132,7 @@ export const api = {
   },
 
   deleteProduct: async (id) => {
-    const res = await fetch(`${API_URL}/admin/products/${id}`, { 
+    const res = await fetch(`${API_BASE_URL}/admin/products/${id}`, { 
       method: 'DELETE' 
     });
     return await res.json();

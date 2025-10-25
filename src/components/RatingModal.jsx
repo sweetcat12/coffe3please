@@ -2,6 +2,8 @@ import { useState } from 'react';
 import StarDisplay from './StarDisplay';
 import { Upload, X } from 'lucide-react';
 
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
+
 function RatingModal({ product, closeModal, submitRating, existingRatings, currentUser }) {
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState('');
@@ -46,7 +48,7 @@ function RatingModal({ product, closeModal, submitRating, existingRatings, curre
   const handleSubmit = (e) => {
     e.preventDefault();
     if (rating > 0) {
-      submitRating(rating, comment, image); // Pass image to submitRating
+      submitRating(rating, comment, image);
       setRating(0);
       setComment('');
       setImage(null);

@@ -1,6 +1,8 @@
 // src/components/AuthModal.jsx
 import { useState, useEffect } from 'react';
 
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
+
 const AuthModal = ({ mode, closeModal, onLogin, onSignup, switchMode, onForgotPassword }) => {
   const [formData, setFormData] = useState({
     username: '',
@@ -11,11 +13,10 @@ const AuthModal = ({ mode, closeModal, onLogin, onSignup, switchMode, onForgotPa
     confirmPassword: ''
   });
   const [error, setError] = useState('');
-  const [successMessage, setSuccessMessage] = useState(''); // NEW: For signup success
+  const [successMessage, setSuccessMessage] = useState('');
 
   useEffect(() => {
     console.log('AuthModal mounted with mode:', mode);
-    // Clear messages when mode changes
     setError('');
     setSuccessMessage('');
   }, [mode]);
@@ -51,7 +52,6 @@ const AuthModal = ({ mode, closeModal, onLogin, onSignup, switchMode, onForgotPa
         return;
       }
 
-      // Validate username
       if (formData.username.length < 3) {
         setError('Username must be at least 3 characters');
         return;
@@ -84,7 +84,6 @@ const AuthModal = ({ mode, closeModal, onLogin, onSignup, switchMode, onForgotPa
 
       const result = await onSignup(formData.email, formData.password, formData.name, formData.phone, formData.username);
       if (result.success) {
-        // NEW: Show success message and clear form
         setSuccessMessage('Account created successfully! Please wait for admin approval before logging in.');
         setFormData({
           username: '',
