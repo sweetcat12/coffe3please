@@ -23,7 +23,7 @@ async function testEmail() {
     });
     
     console.log('✅ Email sent successfully!');
-    console.log('Message ID:', info.messageId);
+    console.log('Message ID:', info.messageId); 
   } catch (error) {
     console.error('❌ Email failed:', error.message);
     console.error('Full error:', error);
